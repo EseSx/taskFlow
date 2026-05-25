@@ -4,33 +4,64 @@ import { useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 
-const email = ref('')
-
 const router = useRouter()
 
 const authStore = useAuthStore()
 
+const email = ref('')
+const password = ref('')
+
+const error = ref('')
+
 const handleLogin = () => {
-  if (!email.value) return
+  error.value = ''
+
+  if (!email.value || !password.value) {
+    error.value = 'All fields are required'
+
+    return
+  }
 
   authStore.login(email.value)
 
   router.push('/dashboard')
-} // Maneja el proceso de inicio de sesión verificando que se haya ingresado un correo electrónico, llamando a la función de inicio de sesión del store de autenticación con el correo electrónico proporcionado y redirigiendo al usuario al dashboard después de iniciar sesión
+}
 </script>
 
 <template>
   <div>
     <h1>Login</h1>
 
-    <input
-      v-model="email"
-      type="email"
-      placeholder="Email"
-    />
+    <form @submit.prevent="handleLogin">
 
-    <button @click="handleLogin">
-      Login
-    </button>
+      <div>
+        <label>Email</label>
+
+        <input
+          v-model="email"
+          type="email"
+          placeholder="Enter your email"
+        />
+      </div>
+
+      <div>
+        <label>Password</label>
+
+        <input
+          v-model="password"
+          type="password"
+          placeholder="Enter your password"
+        />
+      </div>
+
+      <p v-if="error">
+        {{ error }}
+      </p>
+
+      <button type="submit">
+        Login
+      </button>
+
+    </form>
   </div>
 </template>
