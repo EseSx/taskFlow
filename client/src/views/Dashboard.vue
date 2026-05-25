@@ -1,3 +1,9 @@
 <template>
-  <h1>Dashboard Page</h1>
+  <div>
+    <h1>Dashboard</h1>
+
+    <p>
+      Welcome to TaskFlow
+    </p>
+  </div>
 </template>
