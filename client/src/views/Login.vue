@@ -25,7 +25,7 @@ const handleLogin = () => {
   authStore.login(email.value)
 
   router.push('/dashboard')
-}
+} // En una aplicación real, aquí se haría una llamada a la API para verificar las credenciales
 </script>
 
 <template>
