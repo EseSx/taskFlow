@@ -1,0 +1,52 @@
+// Configuración del cliente de Prisma y conexión a la base de datos
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Fuente de datos: PostgreSQL usando la variable de entorno DATABASE_URL
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Tabla: User ─────────────────────────────────────────────────
+// Representa a un usuario registrado en la aplicación
+model User {
+  id        Int      @id @default(autoincrement()) // ID único autoincrementable
+  email     String   @unique                        // Email único por usuario
+  password  String                                  // Password hasheado con bcrypt
+  name      String                                  // Nombre del usuario
+  createdAt DateTime @default(now())                // Fecha de creación automática
+  updatedAt DateTime @updatedAt                     // Fecha de actualización automática
+
+  // Relación: un usuario puede tener muchas tareas
+  tasks Task[]
+
+  @@map("users") // Nombre de la tabla en la base de datos
+}
+
+// ── Tabla: Task ─────────────────────────────────────────────────
+// Representa una tarea perteneciente a un usuario
+model Task {
+  id          Int        @id @default(autoincrement()) // ID único autoincrementable
+  title       String                                    // Título de la tarea
+  description String?                                  // Descripción opcional
+  completed   Boolean    @default(false)               // Estado: completada o no
+  priority    Priority   @default(MEDIUM)              // Prioridad de la tarea
+  dueDate     DateTime?                                // Fecha límite opcional
+  createdAt   DateTime   @default(now())               // Fecha de creación automática
+  updatedAt   DateTime   @updatedAt                    // Fecha de actualización automática
+
+  // Relación: cada tarea pertenece a un usuario
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tasks") // Nombre de la tabla en la base de datos
+}
+
+// Enum de prioridades disponibles para las tareas
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
