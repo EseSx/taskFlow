@@ -3,8 +3,7 @@
 // Maneja automáticamente: el token JWT, errores globales y base URL
 
 // URL base del backend (se configura en .env)
-const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api')
-  .replace(/\/$/, '')
+const BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 
 // ── Tipo de opciones para el fetch ───────────────────────────────
 interface RequestOptions extends RequestInit {
