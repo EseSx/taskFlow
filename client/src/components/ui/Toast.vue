@@ -38,7 +38,7 @@ const typeIcons: Record<string, string> = {
         @click="removeToast(toast.id)"
       >
         <!-- Ícono del tipo de notificación -->
-        <span class="text-base font-bold flex-shrink-0">
+        <span class="text-base font-bold shrink-0">
           {{ typeIcons[toast.type] }}
         </span>
 
@@ -46,7 +46,7 @@ const typeIcons: Record<string, string> = {
         <span class="flex-1">{{ toast.message }}</span>
 
         <!-- Botón de cierre -->
-        <button class="flex-shrink-0 opacity-70 hover:opacity-100 transition-opacity">
+        <button class="shrink-0 opacity-70 hover:opacity-100 transition-opacity">
           ✕
         </button>
       </div>

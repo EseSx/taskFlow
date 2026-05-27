@@ -39,7 +39,7 @@ const priorityLabel: Record<string, string> = {
     <button
       @click="emit('toggle', task.id)"
       :class="[
-        'mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
+        'mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
         task.completed
           ? 'bg-green-500 border-green-500 text-white'
           : 'border-white/30 hover:border-green-400'
@@ -76,7 +76,7 @@ const priorityLabel: Record<string, string> = {
     </div>
 
     <!-- Acciones (visibles al hacer hover) -->
-    <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+    <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
       <!-- Botón editar -->
       <button
         @click="emit('edit', task)"
