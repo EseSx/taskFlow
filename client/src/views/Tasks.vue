@@ -59,15 +59,22 @@ const closeModal = () => {
 }
 
 // Maneja el submit del formulario (crea o actualiza según el modo)
-const handleSubmit = async (data: Parameters<typeof tasksStore.createTask>[0]) => {
+import type { CreateTaskData } from '@/services/taskService'
+
+// Casteamos el priority de string a los valores válidos del tipo
+const handleSubmit = async (data: { title: string; description: string; priority: string; dueDate: string }) => {
+  const taskData: CreateTaskData = {
+    ...data,
+    priority: data.priority as 'LOW' | 'MEDIUM' | 'HIGH',
+  }
   try {
     if (editingTask.value) {
       // Modo edición: actualizamos la tarea existente
-      await tasksStore.updateTask(editingTask.value.id, data)
+      await tasksStore.updateTask(editingTask.value.id, taskData)
       toast.success('Tarea actualizada ✓')
     } else {
       // Modo creación: creamos una nueva tarea
-      await tasksStore.createTask(data)
+      await tasksStore.createTask(taskData)
       toast.success('Tarea creada ✓')
     }
     closeModal()
