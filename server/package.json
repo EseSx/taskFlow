@@ -5,12 +5,12 @@
   "type": "commonjs",
   "main": "src/server.js",
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "node ./node_modules/prisma/build/index.js generate",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "migrate:deploy": "prisma migrate deploy",
-    "migrate:dev": "prisma migrate dev",
-    "studio": "prisma studio"
+    "migrate:deploy": "node ./node_modules/prisma/build/index.js migrate deploy",
+    "migrate:dev": "node ./node_modules/prisma/build/index.js migrate dev",
+    "studio": "node ./node_modules/prisma/build/index.js studio"
   },
   "engines": {
     "node": "20.x"
