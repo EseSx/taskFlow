@@ -19,7 +19,10 @@ const app = express();
 // CORS: permite que el frontend (en otro origen) haga requests al backend
 app.use(
   cors({
-    origin: CLIENT_URL, // Solo aceptamos requests del cliente configurado
+    origin: [
+      "http://localhost:5173",
+      "https://task-flow-omega-ashy.vercel.app",
+    ], // Solo aceptamos requests de los clientes configurados
     credentials: true, // Permitimos cookies y headers de autorización
   }),
 );
