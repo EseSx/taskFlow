@@ -1,67 +1,154 @@
 <script setup lang="ts">
+// ── Vista: Login ──────────────────────────────────────────────────
+// Formulario de inicio de sesión
+// Conectado al authStore que hace la llamada real al backend
+// Incluye: validación, loading state y manejo de errores del backend
+
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-
 import { useAuthStore } from '@/stores/auth'
+import { validateLoginForm } from '@/utils/validators'
 
-const router = useRouter()
-
+const router    = useRouter()
 const authStore = useAuthStore()
 
-const email = ref('')
+// ── Estado local del formulario ───────────────────────────────────
+const email    = ref('')
 const password = ref('')
 
-const error = ref('')
+// Errores de validación por campo (antes de enviar al backend)
+const fieldErrors = ref<Record<string, string>>({})
 
-const handleLogin = () => {
-  error.value = ''
+// ── Handler principal ─────────────────────────────────────────────
+const handleLogin = async () => {
+  // 1. Limpiamos errores previos
+  fieldErrors.value = {}
+  authStore.clearError()
 
-  if (!email.value || !password.value) {
-    error.value = 'All fields are required'
-
+  // 2. Validamos localmente antes de hacer el request
+  const errors = validateLoginForm(email.value, password.value)
+  if (Object.keys(errors).length > 0) {
+    fieldErrors.value = errors
     return
   }
 
-  authStore.login(email.value)
-
-  router.push('/dashboard')
-} // En una aplicación real, aquí se haría una llamada a la API para verificar las credenciales
+  // 3. Intentamos el login — el store maneja loading y error
+  try {
+    await authStore.login(email.value, password.value)
+    // Si no lanza error, el login fue exitoso → redirigimos
+    router.push('/dashboard')
+  } catch {
+    // El error ya está en authStore.error, lo mostramos en el formulario
+    // No necesitamos hacer nada acá
+  }
+}
 </script>
 
 <template>
-  <div>
-    <h1>Login</h1>
+  <div class="min-h-screen flex items-center justify-center bg-gray-950 px-4">
+    <div class="w-full max-w-sm">
 
-    <form @submit.prevent="handleLogin">
-
-      <div>
-        <label>Email</label>
-
-        <input
-          v-model="email"
-          type="email"
-          placeholder="Enter your email"
-        />
+      <!-- Logo / título -->
+      <div class="text-center mb-8">
+        <h1 class="text-2xl font-medium text-white">TaskFlow</h1>
+        <p class="text-sm text-white/40 mt-1">Iniciá sesión para continuar</p>
       </div>
 
-      <div>
-        <label>Password</label>
+      <!-- Card del formulario -->
+      <div class="bg-white/5 border border-white/10 rounded-2xl p-6">
 
-        <input
-          v-model="password"
-          type="password"
-          placeholder="Enter your password"
-        />
+        <form @submit.prevent="handleLogin" novalidate>
+
+          <!-- Campo Email -->
+          <div class="mb-4">
+            <label class="block text-xs font-medium text-white/60 mb-1.5">
+              Email
+            </label>
+            <input
+              v-model="email"
+              type="email"
+              placeholder="tu@email.com"
+              autocomplete="email"
+              :disabled="authStore.loading"
+              :class="[
+                'w-full bg-white/5 border rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 outline-none transition-all disabled:opacity-50',
+                fieldErrors.email
+                  ? 'border-red-500 focus:border-red-400'
+                  : 'border-white/10 focus:border-blue-500'
+              ]"
+            />
+            <!-- Error de validación local -->
+            <p v-if="fieldErrors.email" class="text-red-400 text-xs mt-1.5 flex items-center gap-1">
+              <span>⚠</span> {{ fieldErrors.email }}
+            </p>
+          </div>
+
+          <!-- Campo Password -->
+          <div class="mb-6">
+            <label class="block text-xs font-medium text-white/60 mb-1.5">
+              Contraseña
+            </label>
+            <input
+              v-model="password"
+              type="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+              :disabled="authStore.loading"
+              :class="[
+                'w-full bg-white/5 border rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 outline-none transition-all disabled:opacity-50',
+                fieldErrors.password
+                  ? 'border-red-500 focus:border-red-400'
+                  : 'border-white/10 focus:border-blue-500'
+              ]"
+            />
+            <!-- Error de validación local -->
+            <p v-if="fieldErrors.password" class="text-red-400 text-xs mt-1.5 flex items-center gap-1">
+              <span>⚠</span> {{ fieldErrors.password }}
+            </p>
+          </div>
+
+          <!-- Error del backend (credenciales inválidas, etc.) -->
+          <div
+            v-if="authStore.error"
+            class="mb-4 px-3.5 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm"
+          >
+            {{ authStore.error }}
+          </div>
+
+          <!-- Botón de submit con loading state -->
+          <button
+            type="submit"
+            :disabled="authStore.loading"
+            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-all"
+          >
+            <!-- Spinner animado mientras carga -->
+            <svg
+              v-if="authStore.loading"
+              class="animate-spin w-4 h-4 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+            <!-- Texto cambia según el estado -->
+            {{ authStore.loading ? 'Iniciando sesión...' : 'Iniciar sesión' }}
+          </button>
+
+        </form>
+
       </div>
 
-      <p v-if="error">
-        {{ error }}
+      <!-- Link a registro -->
+      <p class="text-center text-sm text-white/40 mt-5">
+        ¿No tenés cuenta?
+        <router-link to="/register" class="text-blue-400 hover:text-blue-300 transition-colors">
+          Registrate
+        </router-link>
       </p>
 
-      <button type="submit">
-        Login
-      </button>
-
-    </form>
+    </div>
   </div>
 </template>
