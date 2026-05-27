@@ -5,15 +5,15 @@
   "type": "commonjs",
   "main": "src/server.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "generate": "npx prisma generate",
-    "migrate:deploy": "npx prisma migrate deploy",
-    "migrate:dev": "npx prisma migrate dev",
-    "studio": "npx prisma studio"
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:dev": "prisma migrate dev",
+    "studio": "prisma studio"
   },
   "engines": {
-    "node": ">=20"
+    "node": "20.x"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",
