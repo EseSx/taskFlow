@@ -19,10 +19,20 @@ const app = express();
 // CORS: permite que el frontend (en otro origen) haga requests al backend
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://task-flow-omega-ashy.vercel.app",
-    ], // Solo aceptamos requests de los clientes configurados
+    origin: function (origin, callback) {
+      // Permitir solicitudes sin origen (como las de Postman o curl)
+      if (!origin) return callback(null, true)
+
+      const allowed = (process.env.CLIENT_URL || '')
+        .split(',')
+        .map(s => s.trim())
+
+      if (allowed.includes(origin)) {
+        callback(null, true)
+      } else {
+        callback(new Error(`CORS: Origen ${origin} no permitido`))
+      }
+    }
     credentials: true, // Permitimos cookies y headers de autorización
   }),
 );
