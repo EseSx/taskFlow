@@ -22,11 +22,7 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
 
-      const allowed = (process.env.CLIENT_URL || "")
-        .split(",")
-        .map((s) => s.trim());
-
-      if (allowed.includes(origin)) {
+      if (origin.includes("vercel.app") || origin.includes("localhost")) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: Origen ${origin} no permitido`));
