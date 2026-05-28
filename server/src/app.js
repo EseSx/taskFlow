@@ -20,7 +20,6 @@ const app = express();
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Permitir solicitudes sin origen (como las de Postman o curl)
       if (!origin) return callback(null, true);
 
       const allowed = (process.env.CLIENT_URL || "")
@@ -33,9 +32,11 @@ app.use(
         callback(new Error(`CORS: Origen ${origin} no permitido`));
       }
     },
-    credentials: true, // Permitimos cookies y headers de autorización
+    credentials: true,
   }),
 );
+
+app.options("*", cors());
 
 // Parsear el body de las requests como JSON
 // Sin esto, req.body sería undefined
