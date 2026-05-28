@@ -21,18 +21,18 @@ app.use(
   cors({
     origin: function (origin, callback) {
       // Permitir solicitudes sin origen (como las de Postman o curl)
-      if (!origin) return callback(null, true)
+      if (!origin) return callback(null, true);
 
-      const allowed = (process.env.CLIENT_URL || '')
-        .split(',')
-        .map(s => s.trim())
+      const allowed = (process.env.CLIENT_URL || "")
+        .split(",")
+        .map((s) => s.trim());
 
       if (allowed.includes(origin)) {
-        callback(null, true)
+        callback(null, true);
       } else {
-        callback(new Error(`CORS: Origen ${origin} no permitido`))
+        callback(new Error(`CORS: Origen ${origin} no permitido`));
       }
-    }
+    },
     credentials: true, // Permitimos cookies y headers de autorización
   }),
 );
