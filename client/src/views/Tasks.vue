@@ -1,38 +1,52 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useTasksStore } from '@/stores/tasks'
-import { useToast }      from '@/composables/useToast'
-import { storeToRefs }   from 'pinia'
+import { useToast } from '@/composables/useToast'
+import { storeToRefs } from 'pinia'
 import TaskCard from '@/components/tasks/TaskCard.vue'
 import TaskForm from '@/components/tasks/TaskForm.vue'
 import type { Task, CreateTaskData } from '@/services/taskService'
 
 const tasksStore = useTasksStore()
-const toast      = useToast()
+const toast = useToast()
 
 const { tasks, loading, error, pendingCount, completedCount } = storeToRefs(tasksStore)
 
-const showModal      = ref(false)
-const editingTask    = ref<Task | null>(null)
-const searchQuery    = ref('')
-const filterStatus   = ref('')
+const showModal = ref(false)
+const editingTask = ref<Task | null>(null)
+const searchQuery = ref('')
+const filterStatus = ref('')
 const filterPriority = ref('')
 
 onMounted(() => tasksStore.fetchTasks())
 
 watch([searchQuery, filterStatus, filterPriority], () => {
   tasksStore.setFilters({
-    search:    searchQuery.value || undefined,
+    search: searchQuery.value || undefined,
     completed: filterStatus.value || undefined,
-    priority:  filterPriority.value || undefined,
+    priority: filterPriority.value || undefined,
   })
 })
 
-const openCreateModal = () => { editingTask.value = null;  showModal.value = true }
-const openEditModal   = (task: Task) => { editingTask.value = task; showModal.value = true }
-const closeModal      = () => { showModal.value = false;  editingTask.value = null }
+const openCreateModal = () => {
+  editingTask.value = null
+  showModal.value = true
+}
+const openEditModal = (task: Task) => {
+  editingTask.value = task
+  showModal.value = true
+}
+const closeModal = () => {
+  showModal.value = false
+  editingTask.value = null
+}
 
-const handleSubmit = async (data: { title: string; description: string; priority: string; dueDate: string }) => {
+const handleSubmit = async (data: {
+  title: string
+  description: string
+  priority: string
+  dueDate: string
+}) => {
   const taskData: CreateTaskData = { ...data, priority: data.priority as 'LOW' | 'MEDIUM' | 'HIGH' }
   try {
     if (editingTask.value) {
@@ -49,7 +63,7 @@ const handleSubmit = async (data: { title: string; description: string; priority
 }
 
 const handleToggle = async (id: number) => {
-  const task = tasks.value.find(t => t.id === id)
+  const task = tasks.value.find((t) => t.id === id)
   if (!task) return
   try {
     await tasksStore.updateTask(id, { completed: !task.completed })
@@ -70,19 +84,18 @@ const handleDelete = async (id: number) => {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto space-y-6">
-
+  <div class="max-w-3xl mx-auto space-y-6 cursor-default">
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-2xl font-bold text-white">Mis Tareas</h2>
+        <h2 class="text-2xl font-bold text-white cursor-default">Mis Tareas</h2>
         <p class="text-white/40 text-sm mt-0.5">
           {{ pendingCount }} pendientes · {{ completedCount }} completadas
         </p>
       </div>
       <button
         @click="openCreateModal"
-        class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all"
+        class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all cursor-pointer"
       >
         <span class="text-lg leading-none">+</span>
         Nueva tarea
@@ -99,7 +112,7 @@ const handleDelete = async (id: number) => {
       />
       <select
         v-model="filterStatus"
-        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/70 outline-none focus:border-blue-400 transition-all"
+        class="bg-white/5 border border-white/10 rounded-lg px-3 pr-9 py-2 text-sm text-white/70 outline-none focus:outline-none focus:ring-0 focus:border-blue-400 focus:bg-white/10 transition-all appearance-none cursor-pointer *:bg-gray-900 *:text-white"
       >
         <option value="">Todas</option>
         <option value="false">Pendientes</option>
@@ -107,7 +120,7 @@ const handleDelete = async (id: number) => {
       </select>
       <select
         v-model="filterPriority"
-        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/70 outline-none focus:border-blue-400 transition-all"
+        class="bg-white/5 border border-white/10 rounded-lg px-3 pr-9 py-2 text-sm text-white/70 outline-none focus:outline-none focus:ring-0 focus:border-blue-400 focus:bg-white/10 transition-all appearance-none cursor-pointer *:bg-gray-900 *:text-white"
       >
         <option value="">Todas las prioridades</option>
         <option value="HIGH">Alta</option>
@@ -125,9 +138,11 @@ const handleDelete = async (id: number) => {
     <div v-else-if="tasks.length === 0" class="text-center py-16">
       <p class="text-5xl mb-4">📝</p>
       <p class="text-white/60 text-sm">
-        {{ searchQuery || filterStatus || filterPriority
-          ? 'No hay tareas que coincidan con los filtros'
-          : 'No tenés tareas todavía. ¡Creá la primera!' }}
+        {{
+          searchQuery || filterStatus || filterPriority
+            ? 'No hay tareas que coincidan con los filtros'
+            : 'No tenés tareas todavía. ¡Creá la primera!'
+        }}
       </p>
     </div>
 
@@ -163,11 +178,45 @@ const handleDelete = async (id: number) => {
         </div>
       </div>
     </transition>
-
   </div>
 </template>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
-.fade-enter-from, .fade-leave-to       { opacity: 0; }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  background-color: rgba(255, 255, 255, 0.05);
+
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255,255,255,0.45)'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7' /%3E%3C/svg%3E");
+
+  background-position: right 0.7rem center;
+  background-repeat: no-repeat;
+  background-size: 14px;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+select:focus,
+select:focus-visible,
+select:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+select option {
+  background-color: rgb(17 24 39);
+  color: rgba(255, 255, 255, 0.9);
+}
 </style>
