@@ -13,6 +13,12 @@ const navLinks = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/tasks', label: 'Mis Tareas', icon: CheckSquare },
 ]
+
+const handleClick = () => {
+  if (window.innerWidth <= 768) {
+    emit('close')
+  }
+}
 </script>
 
 <template>
@@ -43,7 +49,7 @@ const navLinks = [
         v-for="link in navLinks"
         :key="link.to"
         :to="link.to"
-        @click="emit('close')"
+        @click="handleClick"
         :class="[
           'flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-lg text-sm font-medium mb-1 transition-all',
           route.path === link.to
