@@ -1,31 +1,21 @@
 <script setup lang="ts">
-// ── Componente TaskCard ───────────────────────────────────────────
-// Muestra una tarea individual en la lista
-// Emite eventos al padre para toggle y delete sin manejar la lógica acá
-
+import { useRouter } from 'vue-router'
 import type { Task } from '@/services/taskService'
 import { formatDate, priorityColor } from '@/utils/validators'
+import { Check, Pencil, Trash2, CalendarDays, ChevronRight } from 'lucide-vue-next'
 
-import { Check, Pencil, Trash2, CalendarDays } from 'lucide-vue-next'
-
-// Props que recibe el componente
-const props = defineProps<{
-  task: Task
-}>()
-
-// Eventos que emite al componente padre
+const props = defineProps<{ task: Task }>()
 const emit = defineEmits<{
-  toggle: [id: number] // Cambiar estado completado
-  delete: [id: number] // Eliminar tarea
-  edit: [task: Task] // Abrir formulario de edición
+  toggle: [id: number]
+  delete: [id: number]
+  edit: [task: Task]
 }>()
 
-// Texto legible de la prioridad
-const priorityLabel: Record<string, string> = {
-  LOW: 'Baja',
-  MEDIUM: 'Media',
-  HIGH: 'Alta',
-}
+const router = useRouter()
+
+const priorityLabel: Record<string, string> = { LOW: 'Baja', MEDIUM: 'Media', HIGH: 'Alta' }
+
+const goToDetail = () => router.push(`/tasks/${props.task.id}`)
 </script>
 
 <template>
@@ -37,23 +27,22 @@ const priorityLabel: Record<string, string> = {
         : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/8',
     ]"
   >
-    <!-- Checkbox para marcar como completada -->
+    <!-- Checkbox -->
     <button
-      @click="emit('toggle', task.id)"
+      @click.stop="emit('toggle', task.id)"
       :class="[
-        'mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all cursor-pointer',
+        'mt-0.5 w-5 h-5 min-w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all touch-manipulation',
         task.completed
           ? 'bg-green-500 border-green-500 text-white'
-          : 'border-white/30 hover:border-green-400',
+          : 'border-white/30 hover:border-green-400 active:border-green-400',
       ]"
       aria-label="Marcar como completada"
     >
-      <Check v-if="task.completed" class="w-3 h-3 stroke-[3]" />
+      <Check v-if="task.completed" class="w-3 h-3 stroke-3" />
     </button>
 
-    <!-- Contenido de la tarea -->
-    <div class="flex-1 min-w-0">
-      <!-- Título -->
+    <!-- Contenido (clickeable para ir al detalle) -->
+    <div class="flex-1 min-w-0 cursor-pointer" @click="goToDetail">
       <p
         :class="[
           'text-sm font-medium text-white leading-5',
@@ -62,47 +51,48 @@ const priorityLabel: Record<string, string> = {
       >
         {{ task.title }}
       </p>
-
-      <!-- Descripción (si existe) -->
-      <p v-if="task.description" class="text-xs text-white/40 mt-1 line-clamp-2">
+      <p v-if="task.description" class="text-xs text-white/40 mt-0.5 line-clamp-1 sm:line-clamp-2">
         {{ task.description }}
       </p>
-
-      <!-- Meta: prioridad y fecha -->
       <div class="flex items-center gap-2 mt-2 flex-wrap">
-        <!-- Badge de prioridad -->
         <span
           :class="['text-xs px-2 py-0.5 rounded-full font-medium', priorityColor(task.priority)]"
         >
           {{ priorityLabel[task.priority] }}
         </span>
-
-        <!-- Fecha límite -->
         <span v-if="task.dueDate" class="flex items-center gap-1 text-xs text-white/30">
-          <CalendarDays class="w-3 h-3" />
-          {{ formatDate(task.dueDate) }}
+          <CalendarDays class="w-3 h-3" />{{ formatDate(task.dueDate) }}
         </span>
       </div>
     </div>
 
-    <!-- Acciones (visibles al hacer hover) -->
-    <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-      <!-- Botón editar -->
+    <!-- Acciones:
+         - Mobile: siempre visibles
+         - Desktop: aparecen en hover -->
+    <div
+      class="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0"
+    >
       <button
-        @click="emit('edit', task)"
-        class="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
-        aria-label="Editar tarea"
+        @click.stop="emit('edit', task)"
+        class="p-2 sm:p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 active:bg-white/15 transition-all touch-manipulation"
+        aria-label="Editar"
       >
-        <Pencil class="w-3.5 h-3.5" />
+        <Pencil class="w-4 h-4 sm:w-3.5 sm:h-3.5" />
       </button>
-
-      <!-- Botón eliminar -->
       <button
-        @click="emit('delete', task.id)"
-        class="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-400/10 transition-all cursor-pointer"
-        aria-label="Eliminar tarea"
+        @click.stop="emit('delete', task.id)"
+        class="p-2 sm:p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-400/10 active:bg-red-400/15 transition-all touch-manipulation"
+        aria-label="Eliminar"
       >
-        <Trash2 class="w-3.5 h-3.5" />
+        <Trash2 class="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+      </button>
+      <!-- Flecha para ir al detalle (solo mobile) -->
+      <button
+        @click.stop="goToDetail"
+        class="p-2 rounded-lg text-white/20 sm:hidden touch-manipulation"
+        aria-label="Ver detalle"
+      >
+        <ChevronRight class="w-4 h-4" />
       </button>
     </div>
   </div>
