@@ -1,35 +1,25 @@
 <script setup lang="ts">
-// ── Vista: Tasks ──────────────────────────────────────────────────
-// Vista principal de gestión de tareas
-// Incluye: listado, filtros, búsqueda, modal de creación/edición
-
 import { ref, onMounted, watch } from 'vue'
 import { useTasksStore } from '@/stores/tasks'
 import { useToast }      from '@/composables/useToast'
 import { storeToRefs }   from 'pinia'
 import TaskCard from '@/components/tasks/TaskCard.vue'
 import TaskForm from '@/components/tasks/TaskForm.vue'
-import type { Task } from '@/services/taskService'
+import type { Task, CreateTaskData } from '@/services/taskService'
 
 const tasksStore = useTasksStore()
 const toast      = useToast()
 
-// Desestructuramos el store manteniendo la reactividad
 const { tasks, loading, error, pendingCount, completedCount } = storeToRefs(tasksStore)
 
-// ── Estado local ──────────────────────────────────────────────────
-const showModal   = ref(false)               // Controla la visibilidad del modal
-const editingTask = ref<Task | null>(null)   // null = modo creación, Task = modo edición
-const searchQuery = ref('')                  // Texto de búsqueda
-const filterStatus   = ref('')              // Filtro: '' | 'true' | 'false'
-const filterPriority = ref('')              // Filtro: '' | 'LOW' | 'MEDIUM' | 'HIGH'
+const showModal      = ref(false)
+const editingTask    = ref<Task | null>(null)
+const searchQuery    = ref('')
+const filterStatus   = ref('')
+const filterPriority = ref('')
 
-// ── Carga inicial ─────────────────────────────────────────────────
-onMounted(() => {
-  tasksStore.fetchTasks()
-})
+onMounted(() => tasksStore.fetchTasks())
 
-// Recarga las tareas cuando cambia algún filtro (con debounce implícito del watch)
 watch([searchQuery, filterStatus, filterPriority], () => {
   tasksStore.setFilters({
     search:    searchQuery.value || undefined,
@@ -38,55 +28,28 @@ watch([searchQuery, filterStatus, filterPriority], () => {
   })
 })
 
-// ── Handlers ──────────────────────────────────────────────────────
+const openCreateModal = () => { editingTask.value = null;  showModal.value = true }
+const openEditModal   = (task: Task) => { editingTask.value = task; showModal.value = true }
+const closeModal      = () => { showModal.value = false;  editingTask.value = null }
 
-// Abre el modal para crear una nueva tarea
-const openCreateModal = () => {
-  editingTask.value = null
-  showModal.value = true
-}
-
-// Abre el modal para editar una tarea existente
-const openEditModal = (task: Task) => {
-  editingTask.value = task
-  showModal.value = true
-}
-
-// Cierra el modal y limpia el estado
-const closeModal = () => {
-  showModal.value = false
-  editingTask.value = null
-}
-
-// Maneja el submit del formulario (crea o actualiza según el modo)
-import type { CreateTaskData } from '@/services/taskService'
-
-// Casteamos el priority de string a los valores válidos del tipo
 const handleSubmit = async (data: { title: string; description: string; priority: string; dueDate: string }) => {
-  const taskData: CreateTaskData = {
-    ...data,
-    priority: data.priority as 'LOW' | 'MEDIUM' | 'HIGH',
-  }
+  const taskData: CreateTaskData = { ...data, priority: data.priority as 'LOW' | 'MEDIUM' | 'HIGH' }
   try {
     if (editingTask.value) {
-      // Modo edición: actualizamos la tarea existente
       await tasksStore.updateTask(editingTask.value.id, taskData)
       toast.success('Tarea actualizada ✓')
     } else {
-      // Modo creación: creamos una nueva tarea
       await tasksStore.createTask(taskData)
       toast.success('Tarea creada ✓')
     }
     closeModal()
   } catch {
-    // El error ya está en el store, el toast muestra el mensaje
     toast.error(error.value || 'Error al guardar la tarea')
   }
 }
 
-// Cambia el estado completado de una tarea
 const handleToggle = async (id: number) => {
-  const task = tasks.value.find((t) => t.id === id)
+  const task = tasks.value.find(t => t.id === id)
   if (!task) return
   try {
     await tasksStore.updateTask(id, { completed: !task.completed })
@@ -95,7 +58,6 @@ const handleToggle = async (id: number) => {
   }
 }
 
-// Elimina una tarea con confirmación
 const handleDelete = async (id: number) => {
   if (!confirm('¿Estás seguro de que querés eliminar esta tarea?')) return
   try {
@@ -108,17 +70,16 @@ const handleDelete = async (id: number) => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div class="max-w-3xl mx-auto space-y-6">
 
-    <!-- Encabezado con stats y botón crear -->
+    <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">Mis Tareas</h1>
-        <p class="text-sm text-white/40 mt-1">
+        <h2 class="text-2xl font-bold text-white">Mis Tareas</h2>
+        <p class="text-white/40 text-sm mt-0.5">
           {{ pendingCount }} pendientes · {{ completedCount }} completadas
         </p>
       </div>
-
       <button
         @click="openCreateModal"
         class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all"
@@ -128,30 +89,25 @@ const handleDelete = async (id: number) => {
       </button>
     </div>
 
-    <!-- Filtros y búsqueda -->
-    <div class="flex flex-wrap gap-3">
-      <!-- Búsqueda por texto -->
+    <!-- Filtros -->
+    <div class="flex flex-wrap gap-2">
       <input
         v-model="searchQuery"
         type="text"
         placeholder="Buscar tareas..."
-        class="flex-1 min-w-48 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-blue-400 transition-all"
+        class="flex-1 min-w-40 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-blue-400 transition-all"
       />
-
-      <!-- Filtro por estado -->
       <select
         v-model="filterStatus"
-        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-400 transition-all"
+        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/70 outline-none focus:border-blue-400 transition-all"
       >
         <option value="">Todas</option>
         <option value="false">Pendientes</option>
         <option value="true">Completadas</option>
       </select>
-
-      <!-- Filtro por prioridad -->
       <select
         v-model="filterPriority"
-        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-400 transition-all"
+        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/70 outline-none focus:border-blue-400 transition-all"
       >
         <option value="">Todas las prioridades</option>
         <option value="HIGH">Alta</option>
@@ -160,21 +116,13 @@ const handleDelete = async (id: number) => {
       </select>
     </div>
 
-    <!-- Loading state -->
-    <div v-if="loading" class="flex flex-col gap-2">
-      <!-- Skeleton loading: 4 placeholders animados -->
-      <div
-        v-for="i in 4"
-        :key="i"
-        class="h-16 bg-white/5 rounded-xl animate-pulse"
-      />
+    <!-- Loading skeleton -->
+    <div v-if="loading" class="space-y-2">
+      <div v-for="i in 4" :key="i" class="h-16 bg-white/5 rounded-xl animate-pulse" />
     </div>
 
-    <!-- Empty state: no hay tareas -->
-    <div
-      v-else-if="tasks.length === 0"
-      class="text-center py-16"
-    >
+    <!-- Empty state -->
+    <div v-else-if="tasks.length === 0" class="text-center py-16">
       <p class="text-5xl mb-4">📝</p>
       <p class="text-white/60 text-sm">
         {{ searchQuery || filterStatus || filterPriority
@@ -183,8 +131,8 @@ const handleDelete = async (id: number) => {
       </p>
     </div>
 
-    <!-- Lista de tareas -->
-    <div v-else class="flex flex-col gap-2">
+    <!-- Lista -->
+    <div v-else class="space-y-2">
       <TaskCard
         v-for="task in tasks"
         :key="task.id"
@@ -195,7 +143,7 @@ const handleDelete = async (id: number) => {
       />
     </div>
 
-    <!-- Modal de creación/edición -->
+    <!-- Modal -->
     <transition name="fade">
       <div
         v-if="showModal"
@@ -203,12 +151,9 @@ const handleDelete = async (id: number) => {
         @click.self="closeModal"
       >
         <div class="bg-gray-900 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-          <!-- Título del modal -->
           <h2 class="text-lg font-semibold text-white mb-5">
             {{ editingTask ? 'Editar tarea' : 'Nueva tarea' }}
           </h2>
-
-          <!-- Formulario -->
           <TaskForm
             :task="editingTask"
             :loading="loading"
