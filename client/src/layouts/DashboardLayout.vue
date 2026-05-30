@@ -20,7 +20,7 @@ onUnmounted(() => window.removeEventListener('resize', syncSidebar))
 <template>
   <div class="relative min-h-screen bg-gray-950 flex overflow-hidden">
     <!-- Fondo decorativo solo desktop -->
-    <div class="waves-bg hidden lg:block">
+    <div class="waves-bg block">
       <svg class="waves-svg" viewBox="0 0 1440 900" preserveAspectRatio="none">
         <path
           class="wave-path wave-path-1"
@@ -76,7 +76,7 @@ onUnmounted(() => window.removeEventListener('resize', syncSidebar))
 .waves-svg {
   position: absolute;
   width: 180%;
-  height: 110%;
+  height: 100%;
   left: -40%;
   top: 0;
   opacity: 0.32;
@@ -84,9 +84,9 @@ onUnmounted(() => window.removeEventListener('resize', syncSidebar))
   transform: scale(1.08);
 }
 .wave-path {
-  will-change: transform;
+  will-change: transform, opacity;
   transform-origin: center;
-  opacity: 0.9;
+  animation: float 6s ease-in-out infinite;
 }
 .wave-path-1 {
   fill: rgba(59, 130, 246, 0.19);
@@ -105,23 +105,36 @@ onUnmounted(() => window.removeEventListener('resize', syncSidebar))
     transform: translateX(0) translateY(0);
   }
   100% {
-    transform: translateX(-120px) translateY(20px);
+    transform: translateX(-250px) translateY(60px);
   }
 }
+
 @keyframes wf2 {
   0% {
-    transform: translateX(-60px) translateY(0);
+    transform: translateX(-120px) translateY(0);
   }
   100% {
-    transform: translateX(100px) translateY(-20px);
+    transform: translateX(200px) translateY(-80px);
   }
 }
+
 @keyframes wf3 {
   0% {
-    transform: translateX(0) translateY(10px);
+    transform: translateX(0) translateY(30px);
   }
   100% {
-    transform: translateX(-80px) translateY(-10px);
+    transform: translateX(-180px) translateY(-30px);
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
   }
 }
 </style>
