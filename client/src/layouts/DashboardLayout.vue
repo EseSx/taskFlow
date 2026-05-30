@@ -89,15 +89,15 @@ onUnmounted(() => window.removeEventListener('resize', syncSidebar))
   opacity: 0.9;
 }
 .wave-path-1 {
-  fill: rgba(59, 130, 246, 0.16);
+  fill: rgba(59, 130, 246, 0.19);
   animation: wf1 18s ease-in-out infinite alternate;
 }
 .wave-path-2 {
-  fill: rgba(139, 92, 246, 0.13);
+  fill: rgba(139, 92, 246, 0.16);
   animation: wf2 24s ease-in-out infinite alternate;
 }
 .wave-path-3 {
-  fill: rgba(34, 211, 238, 0.1);
+  fill: rgba(34, 211, 238, 0.4);
   animation: wf3 28s ease-in-out infinite alternate;
 }
 @keyframes wf1 {
