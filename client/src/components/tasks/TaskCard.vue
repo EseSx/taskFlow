@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Task } from '@/services/taskService'
-import { formatDate, priorityColor } from '@/utils/validators'
-import { Check, Pencil, Trash2, CalendarDays, ChevronRight } from 'lucide-vue-next'
+import { priorityColor } from '@/utils/validators'
+import { Check, Pencil, Trash2, CalendarDays, ChevronRight, ListChecks } from 'lucide-vue-next'
 
 const props = defineProps<{ task: Task }>()
 const emit = defineEmits<{
@@ -15,7 +16,21 @@ const router = useRouter()
 
 const priorityLabel: Record<string, string> = { LOW: 'Baja', MEDIUM: 'Media', HIGH: 'Alta' }
 
+// ---------- Progreso de subtareas ----------
+const subtasks = computed(() => props.task.subtasks ?? [])
+const subTotal = computed(() => subtasks.value.length)
+const subDone = computed(() => subtasks.value.filter((s) => s.completed).length)
+const subPct = computed(() =>
+  subTotal.value === 0 ? 0 : Math.round((subDone.value / subTotal.value) * 100),
+)
+
 const goToDetail = () => router.push(`/tasks/${props.task.id}`)
+
+// Helper para formatear fecha corta
+const formatDate = (d: string | null) => {
+  if (!d) return ''
+  return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
+}
 </script>
 
 <template>
@@ -34,7 +49,7 @@ const goToDetail = () => router.push(`/tasks/${props.task.id}`)
         'mt-0.5 w-5 h-5 min-w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all touch-manipulation',
         task.completed
           ? 'bg-green-500 border-green-500 text-white'
-          : 'border-white/30 hover:border-green-400 active:border-green-400',
+          : 'border-white/30 hover:border-green-400',
       ]"
       aria-label="Marcar como completada"
     >
@@ -43,6 +58,7 @@ const goToDetail = () => router.push(`/tasks/${props.task.id}`)
 
     <!-- Contenido (clickeable para ir al detalle) -->
     <div class="flex-1 min-w-0 cursor-pointer" @click="goToDetail">
+      <!-- Título -->
       <p
         :class="[
           'text-sm font-medium text-white leading-5',
@@ -51,9 +67,13 @@ const goToDetail = () => router.push(`/tasks/${props.task.id}`)
       >
         {{ task.title }}
       </p>
-      <p v-if="task.description" class="text-xs text-white/40 mt-0.5 line-clamp-1 sm:line-clamp-2">
+
+      <!-- Descripción -->
+      <p v-if="task.description" class="text-xs text-white/40 mt-0.5 line-clamp-1">
         {{ task.description }}
       </p>
+
+      <!-- Meta: prioridad + fecha -->
       <div class="flex items-center gap-2 mt-2 flex-wrap">
         <span
           :class="['text-xs px-2 py-0.5 rounded-full font-medium', priorityColor(task.priority)]"
@@ -63,6 +83,24 @@ const goToDetail = () => router.push(`/tasks/${props.task.id}`)
         <span v-if="task.dueDate" class="flex items-center gap-1 text-xs text-white/30">
           <CalendarDays class="w-3 h-3" />{{ formatDate(task.dueDate) }}
         </span>
+      </div>
+
+      <!-- ── Progreso de subtareas (solo si existen) ──────────────────── -->
+      <div v-if="subTotal > 0" class="mt-3 space-y-1">
+        <div class="flex items-center justify-between">
+          <span class="flex items-center gap-1 text-xs text-white/30">
+            <ListChecks class="w-3 h-3" />
+            {{ subDone }}/{{ subTotal }} subtareas
+          </span>
+          <span class="text-xs text-white/30">{{ subPct }}%</span>
+        </div>
+        <div class="h-1 bg-white/10 rounded-full overflow-hidden">
+          <div
+            class="h-full rounded-full transition-all duration-500"
+            :class="subPct === 100 ? 'bg-green-500' : 'bg-blue-500'"
+            :style="{ width: subPct + '%' }"
+          />
+        </div>
       </div>
     </div>
 
@@ -74,19 +112,19 @@ const goToDetail = () => router.push(`/tasks/${props.task.id}`)
     >
       <button
         @click.stop="emit('edit', task)"
-        class="p-2 sm:p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 active:bg-white/15 transition-all touch-manipulation"
+        class="p-2 sm:p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all touch-manipulation"
         aria-label="Editar"
       >
         <Pencil class="w-4 h-4 sm:w-3.5 sm:h-3.5" />
       </button>
       <button
         @click.stop="emit('delete', task.id)"
-        class="p-2 sm:p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-400/10 active:bg-red-400/15 transition-all touch-manipulation"
+        class="p-2 sm:p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-400/10 transition-all touch-manipulation"
         aria-label="Eliminar"
       >
         <Trash2 class="w-4 h-4 sm:w-3.5 sm:h-3.5" />
       </button>
-      <!-- Flecha para ir al detalle (solo mobile) -->
+      <!-- Flecha al detalle (mobile) -->
       <button
         @click.stop="goToDetail"
         class="p-2 rounded-lg text-white/20 sm:hidden touch-manipulation"
