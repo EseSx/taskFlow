@@ -6,6 +6,7 @@ import { storeToRefs } from 'pinia'
 import TaskCard from '@/components/tasks/TaskCard.vue'
 import TaskForm from '@/components/tasks/TaskForm.vue'
 import type { Task, CreateTaskData } from '@/services/taskService'
+import { Plus, ClipboardList } from 'lucide-vue-next'
 
 const tasksStore = useTasksStore()
 const toast = useToast()
@@ -97,7 +98,7 @@ const handleDelete = async (id: number) => {
         @click="openCreateModal"
         class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all cursor-pointer"
       >
-        <span class="text-lg leading-none">+</span>
+        <Plus class="w-4 h-4" />
         Nueva tarea
       </button>
     </div>
@@ -136,7 +137,9 @@ const handleDelete = async (id: number) => {
 
     <!-- Empty state -->
     <div v-else-if="tasks.length === 0" class="text-center py-16">
-      <p class="text-5xl mb-4">📝</p>
+      <div class="flex justify-center mb-4">
+        <ClipboardList class="w-10 h-10 text-white/20" />
+      </div>
       <p class="text-white/60 text-sm">
         {{
           searchQuery || filterStatus || filterPriority
@@ -186,7 +189,6 @@ const handleDelete = async (id: number) => {
 .fade-leave-active {
   transition: opacity 0.2s;
 }
-
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
@@ -196,25 +198,19 @@ select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-
   background-color: rgba(255, 255, 255, 0.05);
-
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255,255,255,0.45)'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7' /%3E%3C/svg%3E");
-
   background-position: right 0.7rem center;
   background-repeat: no-repeat;
   background-size: 14px;
-
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
-
 select:focus,
 select:focus-visible,
 select:active {
   outline: none !important;
   box-shadow: none !important;
 }
-
 select option {
   background-color: rgb(17 24 39);
   color: rgba(255, 255, 255, 0.9);

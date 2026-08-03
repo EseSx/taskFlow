@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTasksStore } from '@/stores/tasks'
 import { storeToRefs } from 'pinia'
+import { LayoutList, Clock, CheckCircle2, AlertTriangle, Sparkles, Plus } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -15,7 +16,6 @@ onMounted(() => {
   tasksStore.fetchTasks()
 })
 
-// Stats calculadas
 const totalTasks = computed(() => tasks.value.length)
 const completedTasks = computed(() => tasks.value.filter((t) => t.completed).length)
 const pendingTasks = computed(() => tasks.value.filter((t) => !t.completed).length)
@@ -28,7 +28,6 @@ const completionRate = computed(() => {
   return Math.round((completedTasks.value / totalTasks.value) * 100)
 })
 
-// Tareas recientes (últimas 5 pendientes)
 const recentTasks = computed(() => tasks.value.filter((t) => !t.completed).slice(0, 5))
 
 const greeting = computed(() => {
@@ -67,15 +66,7 @@ const priorityLabel: Record<string, string> = {
         <div class="flex items-center justify-between mb-3">
           <span class="text-white/40 text-xs font-medium uppercase tracking-wider">Total</span>
           <div class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M2 4h12M2 8h12M2 12h8"
-                stroke="white"
-                stroke-opacity=".5"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              />
-            </svg>
+            <LayoutList class="w-4 h-4 text-white/50" />
           </div>
         </div>
         <p class="text-3xl font-bold text-white">{{ totalTasks }}</p>
@@ -87,16 +78,7 @@ const priorityLabel: Record<string, string> = {
         <div class="flex items-center justify-between mb-3">
           <span class="text-white/40 text-xs font-medium uppercase tracking-wider">Pendientes</span>
           <div class="w-8 h-8 rounded-xl bg-yellow-400/10 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="6" stroke="#facc15" stroke-opacity=".8" stroke-width="1.5" />
-              <path
-                d="M8 5v3l2 2"
-                stroke="#facc15"
-                stroke-opacity=".8"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              />
-            </svg>
+            <Clock class="w-4 h-4 text-yellow-400/80" />
           </div>
         </div>
         <p class="text-3xl font-bold text-white">{{ pendingTasks }}</p>
@@ -108,17 +90,7 @@ const priorityLabel: Record<string, string> = {
         <div class="flex items-center justify-between mb-3">
           <span class="text-white/40 text-xs font-medium uppercase tracking-wider">Hechas</span>
           <div class="w-8 h-8 rounded-xl bg-green-400/10 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="6" stroke="#4ade80" stroke-opacity=".8" stroke-width="1.5" />
-              <path
-                d="M5.5 8l2 2 3-3"
-                stroke="#4ade80"
-                stroke-opacity=".8"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <CheckCircle2 class="w-4 h-4 text-green-400/80" />
           </div>
         </div>
         <p class="text-3xl font-bold text-white">{{ completedTasks }}</p>
@@ -130,22 +102,7 @@ const priorityLabel: Record<string, string> = {
         <div class="flex items-center justify-between mb-3">
           <span class="text-white/40 text-xs font-medium uppercase tracking-wider">Urgentes</span>
           <div class="w-8 h-8 rounded-xl bg-red-400/10 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M8 2l6 12H2L8 2z"
-                stroke="#f87171"
-                stroke-opacity=".8"
-                stroke-width="1.5"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M8 7v3M8 11.5v.5"
-                stroke="#f87171"
-                stroke-opacity=".8"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              />
-            </svg>
+            <AlertTriangle class="w-4 h-4 text-red-400/80" />
           </div>
         </div>
         <p class="text-3xl font-bold text-white">{{ highPriority }}</p>
@@ -193,7 +150,6 @@ const priorityLabel: Record<string, string> = {
           :key="task.id"
           class="flex items-center gap-3 p-4 bg-white/3 border border-white/5 rounded-xl hover:bg-white/5 transition-all group"
         >
-          <!-- Indicador prioridad -->
           <div
             :class="[
               'w-2 h-2 rounded-full shrink-0',
@@ -204,9 +160,7 @@ const priorityLabel: Record<string, string> = {
                   : 'bg-blue-400',
             ]"
           />
-
           <p class="flex-1 text-sm text-white/80 truncate">{{ task.title }}</p>
-
           <span :class="['text-xs px-2 py-0.5 rounded-full', priorityColor[task.priority]]">
             {{ priorityLabel[task.priority] }}
           </span>
@@ -214,19 +168,22 @@ const priorityLabel: Record<string, string> = {
       </div>
     </div>
 
-    <!-- Empty state cuando no hay tareas -->
+    <!-- Empty state -->
     <div
       v-else-if="!loading && totalTasks === 0"
       class="text-center py-16 bg-white/3 border border-white/5 rounded-2xl"
     >
-      <p class="text-4xl mb-4">✨</p>
+      <div class="flex justify-center mb-4">
+        <Sparkles class="w-10 h-10 text-white/20" />
+      </div>
       <p class="text-white font-medium mb-1">Todo listo para empezar</p>
       <p class="text-white/40 text-sm mb-5">Creá tu primera tarea para comenzar</p>
       <router-link
         to="/tasks"
         class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all"
       >
-        + Nueva tarea
+        <Plus class="w-4 h-4" />
+        Nueva tarea
       </router-link>
     </div>
   </div>
