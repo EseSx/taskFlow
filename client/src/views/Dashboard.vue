@@ -177,7 +177,7 @@ const priorityLabel: Record<string, string> = {
         <Sparkles class="w-10 h-10 text-white/20" />
       </div>
       <p class="text-white font-medium mb-1">Todo listo para empezar</p>
-      <p class="text-white/40 text-sm mb-5">Creá tu primera tarea para comenzar</p>
+      <p class="text-white/40 text-sm mb-5">Crea tu primera tarea para comenzar</p>
       <router-link
         to="/tasks"
         class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all"
