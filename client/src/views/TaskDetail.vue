@@ -23,7 +23,6 @@ const route = useRoute()
 const router = useRouter()
 const tasksStore = useTasksStore()
 const toast = useToast()
-
 const { currentTask, loading } = storeToRefs(tasksStore)
 
 const showEditForm = ref(false)
@@ -36,20 +35,29 @@ onMounted(async () => {
     return
   }
   await tasksStore.fetchTask(id)
-  if (!currentTask.value) router.push('/tasks')
+  if (!currentTask.value) {
+    router.push('/tasks')
+    return
+  }
+  await tasksStore.fetchSubtasks(id)
 })
 
 const priorityLabel: Record<string, string> = { LOW: 'Baja', MEDIUM: 'Media', HIGH: 'Alta' }
-
 const statusLabel = computed(() => (currentTask.value?.completed ? 'Completada' : 'Pendiente'))
+
+// Progreso de subtareas
+const subtaskProgress = computed(() => {
+  const subs = currentTask.value?.subtasks ?? []
+  if (!subs.length) return null
+  const done = subs.filter((s) => s.completed).length
+  return { done, total: subs.length, pct: Math.round((done / subs.length) * 100) }
+})
 
 // Toggle completada
 const handleToggle = async () => {
   if (!currentTask.value) return
   try {
-    await tasksStore.updateTask(currentTask.value.id, {
-      completed: !currentTask.value.completed,
-    })
+    await tasksStore.updateTask(currentTask.value.id, { completed: !currentTask.value.completed })
     toast.success(currentTask.value.completed ? 'Marcada como pendiente' : 'Tarea completada ✓')
   } catch {
     toast.error('Error al actualizar la tarea')
@@ -79,7 +87,7 @@ const handleSubmit = async (data: {
 // Eliminar
 const handleDelete = async () => {
   if (!currentTask.value) return
-  if (!confirm('¿Eliminás esta tarea?')) return
+  if (!confirm('¿Eliminas esta tarea y todas sus subtareas?')) return
   try {
     await tasksStore.deleteTask(currentTask.value.id)
     toast.success('Tarea eliminada')
@@ -91,7 +99,7 @@ const handleDelete = async () => {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto space-y-5">
+  <div class="max-w-2xl mx-auto space-y-4">
     <!-- Back button -->
     <button
       @click="router.push('/tasks')"
@@ -104,7 +112,7 @@ const handleDelete = async () => {
     <!-- Loading skeleton -->
     <div v-if="loading && !currentTask" class="space-y-4">
       <div class="h-8 bg-white/5 rounded-xl animate-pulse w-2/3" />
-      <div class="h-32 bg-white/5 rounded-2xl animate-pulse" />
+      <div class="h-48 bg-white/5 rounded-2xl animate-pulse" />
     </div>
 
     <template v-else-if="currentTask">
@@ -112,7 +120,6 @@ const handleDelete = async () => {
       <div class="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6 space-y-5">
         <!-- Header: título + acciones -->
         <div class="flex items-start gap-3">
-          <!-- Toggle completada -->
           <button
             @click="handleToggle"
             :class="[
@@ -125,7 +132,6 @@ const handleDelete = async () => {
             <Check v-if="currentTask.completed" class="w-3.5 h-3.5 stroke-3" />
           </button>
 
-          <!-- Título -->
           <h2
             :class="[
               'flex-1 text-lg sm:text-xl font-bold text-white leading-tight',
@@ -135,7 +141,6 @@ const handleDelete = async () => {
             {{ currentTask.title }}
           </h2>
 
-          <!-- Editar / Eliminar -->
           <div class="flex gap-1 shrink-0">
             <button
               @click="showEditForm = !showEditForm"
@@ -145,14 +150,12 @@ const handleDelete = async () => {
                   ? 'text-blue-400 bg-blue-400/10'
                   : 'text-white/40 hover:text-white hover:bg-white/10',
               ]"
-              aria-label="Editar"
             >
               <Pencil class="w-4 h-4" />
             </button>
             <button
               @click="handleDelete"
               class="p-2 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-400/10 transition-all touch-manipulation"
-              aria-label="Eliminar"
             >
               <Trash2 class="w-4 h-4" />
             </button>
@@ -165,9 +168,26 @@ const handleDelete = async () => {
         </p>
         <p v-else class="text-sm text-white/25 italic">Sin descripción</p>
 
+        <!-- Barra de progreso de subtareas (si hay) -->
+        <div v-if="subtaskProgress" class="space-y-1.5">
+          <div class="flex justify-between text-xs text-white/40">
+            <span>Progreso de subtareas</span>
+            <span
+              >{{ subtaskProgress.done }}/{{ subtaskProgress.total }} ·
+              {{ subtaskProgress.pct }}%</span
+            >
+          </div>
+          <div class="h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div
+              class="h-full rounded-full transition-all duration-500"
+              :class="subtaskProgress.pct === 100 ? 'bg-green-500' : 'bg-blue-500'"
+              :style="{ width: subtaskProgress.pct + '%' }"
+            />
+          </div>
+        </div>
+
         <!-- Meta pills -->
         <div class="flex flex-wrap gap-2">
-          <!-- Estado -->
           <div
             :class="[
               'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
@@ -179,8 +199,6 @@ const handleDelete = async () => {
             <component :is="currentTask.completed ? CheckCircle2 : Circle" class="w-3.5 h-3.5" />
             {{ statusLabel }}
           </div>
-
-          <!-- Prioridad -->
           <div
             :class="[
               'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
@@ -190,8 +208,6 @@ const handleDelete = async () => {
             <Flag class="w-3.5 h-3.5" />
             Prioridad {{ priorityLabel[currentTask.priority] }}
           </div>
-
-          <!-- Fecha límite -->
           <div
             v-if="currentTask.dueDate"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-white/50"
@@ -199,8 +215,6 @@ const handleDelete = async () => {
             <CalendarDays class="w-3.5 h-3.5" />
             {{ formatDate(currentTask.dueDate) }}
           </div>
-
-          <!-- Creada -->
           <div
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-white/30"
           >
@@ -222,6 +236,11 @@ const handleDelete = async () => {
           <component :is="currentTask.completed ? Circle : CheckCircle2" class="w-4 h-4" />
           {{ currentTask.completed ? 'Marcar como pendiente' : 'Marcar como completada' }}
         </button>
+      </div>
+
+      <!-- ── Subtareas ──────────────────────────────────────────────────── -->
+      <div class="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6">
+        <SubTaskList :taskId="currentTask.id" :subtasks="currentTask.subtasks ?? []" />
       </div>
 
       <!-- Formulario de edición (expandible) -->
