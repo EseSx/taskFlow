@@ -1,104 +1,102 @@
 // ── Servicio de tareas ────────────────────────────────────────────
-// Contiene todas las operaciones CRUD sobre la tabla tasks
-// Todas las operaciones filtran por userId para garantizar que
-// cada usuario solo acceda a sus propias tareas (seguridad)
 
 const prisma = require("../database/client");
 
-// Obtiene todas las tareas del usuario con filtros opcionales
-const getTasks = async (userId, { completed, priority, search } = {}) => {
-  // Construimos el objeto where dinámicamente según los filtros recibidos
+// Definición de la constante SUBTASK_INCLUDE para incluir subtareas en las consultas
+const SUBTASK_INCLUDE = {
+  subtasks: {
+    orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+  },
+};
+
+// Función para obtener todas las tareas de un usuario con filtros opcionales
+const getAllTasks = async (userId, filters = {}) => {
   const where = { userId };
 
-  // Filtro por estado (completada o no)
-  if (completed !== undefined) {
-    where.completed = completed === "true";
-  }
-
-  // Filtro por prioridad (LOW, MEDIUM, HIGH)
-  if (priority) {
-    where.priority = priority.toUpperCase();
-  }
-
-  // Búsqueda por texto en el título o descripción
-  if (search) {
+  if (filters.priority) where.priority = filters.priority;
+  if (filters.completed) where.completed = filters.completed === "true";
+  if (filters.search)
     where.OR = [
-      { title: { contains: search, mode: "insensitive" } },
-      { description: { contains: search, mode: "insensitive" } },
+      { title: { contains: filters.search, mode: "insensitive" } },
+      { description: { contains: filters.search, mode: "insensitive" } },
     ];
-  }
 
-  // Ejecutamos la query con los filtros aplicados
-  const tasks = await prisma.task.findMany({
+  return prisma.task.findMany({
     where,
-    orderBy: { createdAt: "desc" }, // Las más recientes primero
+    include: SUBTASK_INCLUDE,
+    orderBy: { createdAt: "desc" },
   });
-
-  return tasks;
 };
 
-// Obtiene una tarea por su id, verificando que pertenezca al usuario
+// Función para obtener una tarea por su ID y el ID del usuario
 const getTaskById = async (id, userId) => {
   const task = await prisma.task.findFirst({
-    where: { id: Number(id), userId }, // Verificamos userId para seguridad
+    where: { id, userId },
+    include: SUBTASK_INCLUDE,
   });
-
   if (!task) {
-    const error = new Error("Tarea no encontrada");
-    error.statusCode = 404;
-    throw error;
+    const err = new Error("Tarea no encontrada");
+    err.statusCode = 404;
+    throw err;
+  }
+  return task;
+};
+
+// Función para crear una nueva tarea para un usuario
+const createTask = async (userId, data) => {
+  return prisma.task.create({
+    data: {
+      title: data.title,
+      description: data.description ?? null,
+      priority: data.priority ?? "MEDIUM",
+      dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      userId,
+    },
+    include: SUBTASK_INCLUDE,
+  });
+};
+
+// Función para actualizar una tarea existente por su ID y el ID del usuario
+const updateTask = async (id, userId, data) => {
+  const task = await prisma.task.findFirst({ where: { id, userId } });
+  if (!task) {
+    const err = new Error("Tarea no encontrada");
+    err.statusCode = 404;
+    throw err;
   }
 
-  return task;
-};
-
-// Crea una nueva tarea para el usuario
-const createTask = async (
-  userId,
-  { title, description, priority, dueDate },
-) => {
-  const task = await prisma.task.create({
+  return prisma.task.update({
+    where: { id },
     data: {
-      title,
-      description: description || null,
-      priority: priority?.toUpperCase() || "MEDIUM",
-      dueDate: dueDate ? new Date(dueDate) : null,
-      userId, // Asociamos la tarea al usuario autenticado
+      ...(data.title !== undefined && { title: data.title }),
+      ...(data.description !== undefined && { description: data.description }),
+      ...(data.priority !== undefined && { priority: data.priority }),
+      ...(data.completed !== undefined && { completed: data.completed }),
+      ...(data.dueDate !== undefined && {
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      }),
     },
+    include: SUBTASK_INCLUDE,
   });
-
-  return task;
 };
 
-// Actualiza una tarea existente (solo si pertenece al usuario)
-const updateTask = async (id, userId, data) => {
-  // Verificamos que la tarea exista y pertenezca al usuario
-  await getTaskById(id, userId);
-
-  // Preparamos los datos a actualizar (solo los que vienen en el body)
-  const updateData = {};
-  if (data.title !== undefined) updateData.title = data.title;
-  if (data.description !== undefined) updateData.description = data.description;
-  if (data.completed !== undefined) updateData.completed = data.completed;
-  if (data.priority !== undefined)
-    updateData.priority = data.priority.toUpperCase();
-  if (data.dueDate !== undefined)
-    updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
-
-  const task = await prisma.task.update({
-    where: { id: Number(id) },
-    data: updateData,
-  });
-
-  return task;
-};
-
-// Elimina una tarea (solo si pertenece al usuario)
+// Función para eliminar una tarea por su ID y el ID del usuario
 const deleteTask = async (id, userId) => {
-  // Verificamos que la tarea exista y pertenezca al usuario antes de eliminar
-  await getTaskById(id, userId);
-
-  await prisma.task.delete({ where: { id: Number(id) } });
+  const task = await prisma.task.findFirst({ where: { id, userId } });
+  if (!task) {
+    const err = new Error("Tarea no encontrada");
+    err.statusCode = 404;
+    throw err;
+  }
+  // Las subtareas se eliminan en cascada (onDelete: Cascade en schema)
+  await prisma.task.delete({ where: { id } });
+  return { message: "Tarea eliminada" };
 };
 
-module.exports = { getTasks, getTaskById, createTask, updateTask, deleteTask };
+module.exports = {
+  getAllTasks,
+  getTaskById,
+  createTask,
+  updateTask,
+  deleteTask,
+};
