@@ -1,28 +1,28 @@
-// ── Store de tareas ───────────────────────────────────────────────
-// Maneja el estado global de las tareas del usuario
-// Se conecta al backend a través del taskService
-// Incluye: loading states, manejo de errores y filtros
-
+// ---------- Store de tareas ----------
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import * as taskService from '@/services/taskService'
-import type { Task, CreateTaskData, UpdateTaskData, TaskFilters } from '@/services/taskService'
+import { taskService, subtaskService } from '@/services/taskService'
+import type {
+  Task,
+  SubTask,
+  CreateTaskData,
+  UpdateTaskData,
+  CreateSubTaskData,
+  UpdateSubTaskData,
+  ReorderItem,
+} from '@/services/taskService'
 
 export const useTasksStore = defineStore('tasks', () => {
-  // ── Estado ───────────────────────────────────────────────────────
-  const tasks = ref<Task[]>([])          // Lista de tareas del usuario
+  // ---------- Estado ----------
+  const tasks = ref<Task[]>([]) // Lista de tareas del usuario
   const currentTask = ref<Task | null>(null) // Tarea seleccionada para el detalle
-  const loading = ref(false)             // Indica si hay una operación en curso
+  const loading = ref(false) // Indica si hay una operación en curso
   const error = ref<string | null>(null) // Mensaje de error (null = sin error)
 
   // Filtros activos para la lista de tareas
-  const filters = ref<TaskFilters>({
-    completed: undefined,
-    priority: undefined,
-    search: undefined,
-  })
+  const filters = ref<{ search?: string; priority?: string; completed?: string }>({})
 
-  // ── Getters ──────────────────────────────────────────────────────
+  // ---------- Getters ----------
 
   // Cantidad de tareas pendientes (sin completar)
   const pendingCount = computed(() => tasks.value.filter((t) => !t.completed).length)
@@ -30,109 +30,186 @@ export const useTasksStore = defineStore('tasks', () => {
   // Cantidad de tareas completadas
   const completedCount = computed(() => tasks.value.filter((t) => t.completed).length)
 
-  // ── Actions ───────────────────────────────────────────────────────
+  // Función auxiliar para establecer el mensaje de error
+  const setError = (e: unknown) => {
+    error.value = e instanceof Error ? e.message : 'Error desconocido'
+  }
 
-  // Carga todas las tareas del usuario desde el backend
+  // ---------- Actions : Tasks ----------
+
   const fetchTasks = async () => {
+    // Obtener la lista de tareas del usuario
     loading.value = true
     error.value = null
     try {
-      // Filtramos los valores undefined antes de enviar al backend
-      const activeFilters = Object.fromEntries(
-        Object.entries(filters.value).filter(([_, v]) => v !== undefined)
-      ) as Record<string, string>
-
-      const response = await taskService.fetchTasks(activeFilters)
-      tasks.value = response.data.tasks
-    } catch (err: unknown) {
-      // Capturamos el mensaje de error para mostrarlo en la UI
-      error.value = err instanceof Error ? err.message : 'Error al cargar las tareas'
+      const params: Record<string, string> = {}
+      if (filters.value.search) params.search = filters.value.search
+      if (filters.value.priority) params.priority = filters.value.priority
+      if (filters.value.completed) params.completed = filters.value.completed
+      tasks.value = await taskService.getAll(params)
+    } catch (e) {
+      setError(e)
     } finally {
-      // Siempre desactivamos el loading, haya error o no
       loading.value = false
     }
   }
 
-  // Carga el detalle de una tarea específica
   const fetchTask = async (id: number) => {
+    // Obtener los detalles de una tarea específica
     loading.value = true
     error.value = null
     try {
-      const response = await taskService.fetchTask(id)
-      currentTask.value = response.data.task
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Error al cargar la tarea'
+      currentTask.value = await taskService.getById(id)
+    } catch (e) {
+      setError(e)
+      currentTask.value = null
     } finally {
       loading.value = false
     }
   }
 
-  // Crea una nueva tarea y la agrega al listado
   const createTask = async (data: CreateTaskData) => {
+    // Crear una nueva tarea
     loading.value = true
     error.value = null
     try {
-      const response = await taskService.createTask(data)
-      // Insertamos la nueva tarea al inicio de la lista (más reciente primero)
-      tasks.value.unshift(response.data.task)
-      return response.data.task
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Error al crear la tarea'
-      throw err // Re-lanzamos para que el componente pueda reaccionar
+      const task = await taskService.create(data)
+      tasks.value.unshift(task)
+      return task
+    } catch (e) {
+      setError(e)
+      throw e
     } finally {
       loading.value = false
     }
   }
 
-  // Actualiza una tarea y refleja los cambios en el listado
   const updateTask = async (id: number, data: UpdateTaskData) => {
+    // Actualizar una tarea existente
     loading.value = true
     error.value = null
     try {
-      const response = await taskService.updateTask(id, data)
-      const updated = response.data.task
-
-      // Reemplazamos la tarea en el array sin recargar toda la lista
-      const index = tasks.value.findIndex((t) => t.id === id)
-      if (index !== -1) tasks.value[index] = updated
-
-      // También actualizamos la tarea actual si es la misma
-      if (currentTask.value?.id === id) currentTask.value = updated
-
+      const updated = await taskService.update(id, data)
+      // Actualizar en la lista
+      const idx = tasks.value.findIndex((t) => t.id === id)
+      if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], ...updated }
+      // Actualizar currentTask si corresponde
+      if (currentTask.value?.id === id) currentTask.value = { ...currentTask.value, ...updated }
       return updated
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Error al actualizar la tarea'
-      throw err
+    } catch (e) {
+      setError(e)
+      throw e
     } finally {
       loading.value = false
     }
   }
 
-  // Elimina una tarea del backend y del listado local
   const deleteTask = async (id: number) => {
+    // Eliminar una tarea
     loading.value = true
     error.value = null
     try {
-      await taskService.deleteTask(id)
-      // Removemos la tarea del array local
+      await taskService.delete(id)
       tasks.value = tasks.value.filter((t) => t.id !== id)
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Error al eliminar la tarea'
-      throw err
+      if (currentTask.value?.id === id) currentTask.value = null
+    } catch (e) {
+      setError(e)
+      throw e
     } finally {
       loading.value = false
     }
   }
 
-  // Actualiza los filtros y recarga la lista
-  const setFilters = async (newFilters: TaskFilters) => {
-    filters.value = { ...filters.value, ...newFilters }
-    await fetchTasks() // Recargamos con los nuevos filtros
+  const setFilters = (newFilters: typeof filters.value) => {
+    // Establecer los filtros activos y recargar la lista de tareas
+    filters.value = newFilters
+    fetchTasks()
   }
 
-  // Limpia el estado de error
-  const clearError = () => {
+  // ---------- Actions : SubTasks ----------
+
+  const fetchSubtasks = async (taskId: number) => {
+    // Obtener las subtareas de una tarea específica
     error.value = null
+    try {
+      const subtasks = await subtaskService.getAll(taskId)
+      // Si currentTask es la tarea correspondiente, actualizamos las subtareas inline
+      if (currentTask.value?.id === taskId) {
+        currentTask.value = { ...currentTask.value, subtasks }
+      }
+      return subtasks
+    } catch (e) {
+      setError(e)
+      throw e
+    }
+  }
+
+  const createSubtask = async (taskId: number, data: CreateSubTaskData) => {
+    // Crear una nueva subtarea para una tarea específica
+    error.value = null
+    try {
+      const subtask = await subtaskService.create(taskId, data)
+      if (currentTask.value?.id === taskId) {
+        currentTask.value = {
+          ...currentTask.value,
+          subtasks: [...(currentTask.value.subtasks ?? []), subtask],
+        }
+      }
+      return subtask
+    } catch (e) {
+      setError(e)
+      throw e
+    }
+  }
+
+  const updateSubtask = async (taskId: number, subtaskId: number, data: UpdateSubTaskData) => {
+    // Actualizar una subtarea existente
+    error.value = null
+    try {
+      const updated = await subtaskService.update(taskId, subtaskId, data)
+      if (currentTask.value?.id === taskId) {
+        currentTask.value = {
+          ...currentTask.value,
+          subtasks: currentTask.value.subtasks.map((s) => (s.id === subtaskId ? updated : s)),
+        }
+      }
+      return updated
+    } catch (e) {
+      setError(e)
+      throw e
+    }
+  }
+
+  const deleteSubtask = async (taskId: number, subtaskId: number) => {
+    // Eliminar una subtarea
+    error.value = null
+    try {
+      await subtaskService.delete(taskId, subtaskId)
+      if (currentTask.value?.id === taskId) {
+        currentTask.value = {
+          ...currentTask.value,
+          subtasks: currentTask.value.subtasks.filter((s) => s.id !== subtaskId),
+        }
+      }
+    } catch (e) {
+      setError(e)
+      throw e
+    }
+  }
+
+  const reorderSubtasks = async (taskId: number, items: ReorderItem[]) => {
+    // Reordenar las subtareas de una tarea específica
+    error.value = null
+    try {
+      const subtasks = await subtaskService.reorder(taskId, items)
+      if (currentTask.value?.id === taskId) {
+        currentTask.value = { ...currentTask.value, subtasks }
+      }
+      return subtasks
+    } catch (e) {
+      setError(e)
+      throw e
+    }
   }
 
   return {
@@ -149,6 +226,10 @@ export const useTasksStore = defineStore('tasks', () => {
     updateTask,
     deleteTask,
     setFilters,
-    clearError,
+    fetchSubtasks,
+    createSubtask,
+    updateSubtask,
+    deleteSubtask,
+    reorderSubtasks,
   }
 })
