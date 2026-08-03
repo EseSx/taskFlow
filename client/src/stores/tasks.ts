@@ -14,23 +14,17 @@ import type {
 
 export const useTasksStore = defineStore('tasks', () => {
   // ---------- Estado ----------
-  const tasks = ref<Task[]>([]) // Lista de tareas del usuario
-  const currentTask = ref<Task | null>(null) // Tarea seleccionada para el detalle
-  const loading = ref(false) // Indica si hay una operación en curso
-  const error = ref<string | null>(null) // Mensaje de error (null = sin error)
+  const tasks = ref<Task[]>([])
+  const currentTask = ref<Task | null>(null)
+  const loading = ref(false)
+  const error = ref<string | null>(null)
 
-  // Filtros activos para la lista de tareas
   const filters = ref<{ search?: string; priority?: string; completed?: string }>({})
 
   // ---------- Getters ----------
-
-  // Cantidad de tareas pendientes (sin completar)
   const pendingCount = computed(() => tasks.value.filter((t) => !t.completed).length)
-
-  // Cantidad de tareas completadas
   const completedCount = computed(() => tasks.value.filter((t) => t.completed).length)
 
-  // Función auxiliar para establecer el mensaje de error
   const setError = (e: unknown) => {
     error.value = e instanceof Error ? e.message : 'Error desconocido'
   }
@@ -38,7 +32,6 @@ export const useTasksStore = defineStore('tasks', () => {
   // ---------- Actions : Tasks ----------
 
   const fetchTasks = async () => {
-    // Obtener la lista de tareas del usuario
     loading.value = true
     error.value = null
     try {
@@ -47,7 +40,9 @@ export const useTasksStore = defineStore('tasks', () => {
       if (filters.value.priority) params.priority = filters.value.priority
       if (filters.value.completed) params.completed = filters.value.completed
       const result = await taskService.getAll(params)
-      tasks.value = Array.isArray(result) ? result : []
+      tasks.value = Array.isArray(result)
+        ? result.map((t) => ({ ...t, subtasks: t.subtasks ?? [] }))
+        : []
     } catch (e) {
       setError(e)
     } finally {
@@ -56,11 +51,11 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const fetchTask = async (id: number) => {
-    // Obtener los detalles de una tarea específica
     loading.value = true
     error.value = null
     try {
-      currentTask.value = await taskService.getById(id)
+      const task = await taskService.getById(id)
+      currentTask.value = { ...task, subtasks: task.subtasks ?? [] }
     } catch (e) {
       setError(e)
       currentTask.value = null
@@ -70,12 +65,11 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const createTask = async (data: CreateTaskData) => {
-    // Crear una nueva tarea
     loading.value = true
     error.value = null
     try {
       const task = await taskService.create(data)
-      tasks.value.unshift(task)
+      tasks.value.unshift({ ...task, subtasks: task.subtasks ?? [] }) // ← fix
       return task
     } catch (e) {
       setError(e)
@@ -86,16 +80,19 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const updateTask = async (id: number, data: UpdateTaskData) => {
-    // Actualizar una tarea existente
     loading.value = true
     error.value = null
     try {
       const updated = await taskService.update(id, data)
-      // Actualizar en la lista
       const idx = tasks.value.findIndex((t) => t.id === id)
-      if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], ...updated }
-      // Actualizar currentTask si corresponde
-      if (currentTask.value?.id === id) currentTask.value = { ...currentTask.value, ...updated }
+      const existing = idx !== -1 ? tasks.value[idx] : null
+      const merged = {
+        ...existing,
+        ...updated,
+        subtasks: updated.subtasks ?? existing?.subtasks ?? [], // ← fix
+      }
+      if (idx !== -1) tasks.value[idx] = merged
+      if (currentTask.value?.id === id) currentTask.value = { ...currentTask.value, ...merged }
       return updated
     } catch (e) {
       setError(e)
@@ -106,7 +103,6 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const deleteTask = async (id: number) => {
-    // Eliminar una tarea
     loading.value = true
     error.value = null
     try {
@@ -122,7 +118,6 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const setFilters = (newFilters: typeof filters.value) => {
-    // Establecer los filtros activos y recargar la lista de tareas
     filters.value = newFilters
     fetchTasks()
   }
@@ -130,11 +125,9 @@ export const useTasksStore = defineStore('tasks', () => {
   // ---------- Actions : SubTasks ----------
 
   const fetchSubtasks = async (taskId: number) => {
-    // Obtener las subtareas de una tarea específica
     error.value = null
     try {
       const subtasks = await subtaskService.getAll(taskId)
-      // Si currentTask es la tarea correspondiente, actualizamos las subtareas inline
       if (currentTask.value?.id === taskId) {
         currentTask.value = { ...currentTask.value, subtasks }
       }
@@ -146,7 +139,6 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const createSubtask = async (taskId: number, data: CreateSubTaskData) => {
-    // Crear una nueva subtarea para una tarea específica
     error.value = null
     try {
       const subtask = await subtaskService.create(taskId, data)
@@ -164,7 +156,6 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const updateSubtask = async (taskId: number, subtaskId: number, data: UpdateSubTaskData) => {
-    // Actualizar una subtarea existente
     error.value = null
     try {
       const updated = await subtaskService.update(taskId, subtaskId, data)
@@ -182,7 +173,6 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const deleteSubtask = async (taskId: number, subtaskId: number) => {
-    // Eliminar una subtarea
     error.value = null
     try {
       await subtaskService.delete(taskId, subtaskId)
@@ -199,7 +189,6 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const reorderSubtasks = async (taskId: number, items: ReorderItem[]) => {
-    // Reordenar las subtareas de una tarea específica
     error.value = null
     try {
       const subtasks = await subtaskService.reorder(taskId, items)
