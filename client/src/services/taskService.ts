@@ -61,7 +61,10 @@ export interface ReorderItem {
 
 // ---------- Tasks API ----------
 export const taskService = {
-  getAll: (params?: Record<string, string>) => api.get<Task[]>('/tasks', { params }),
+  getAll: (params?: Record<string, string>) => {
+    const query = params ? '?' + new URLSearchParams(params).toString() : ''
+    return api.get<Task[]>(`/tasks${query}`)
+  },
 
   getById: (id: number) => api.get<Task>(`/tasks/${id}`),
 
