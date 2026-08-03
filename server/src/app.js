@@ -10,6 +10,7 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 // Importamos las rutas
 const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
+const subtaskRoutes = require("./routes/subtasks");
 
 // Creamos la instancia de Express
 const app = express();
@@ -63,6 +64,7 @@ app.get("/api/health", (req, res) => {
 // Montamos cada router con su prefijo correspondiente
 app.use("/api/auth", authRoutes); // /api/auth/register, /api/auth/login, etc.
 app.use("/api/tasks", taskRoutes); // /api/tasks, /api/tasks/:id, etc.
+app.use("/api/tasks/:taskId/subtasks", subtaskRoutes); // /api/tasks/:taskId/subtasks, /api/tasks/:taskId/subtasks/:id, etc.
 
 // ── Manejo de errores ──────────────────────────────────────────────
 
