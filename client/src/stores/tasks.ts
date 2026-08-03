@@ -46,7 +46,8 @@ export const useTasksStore = defineStore('tasks', () => {
       if (filters.value.search) params.search = filters.value.search
       if (filters.value.priority) params.priority = filters.value.priority
       if (filters.value.completed) params.completed = filters.value.completed
-      tasks.value = await taskService.getAll(params)
+      const result = await taskService.getAll(params)
+      tasks.value = Array.isArray(result) ? result : []
     } catch (e) {
       setError(e)
     } finally {
