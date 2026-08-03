@@ -43,9 +43,7 @@ model Task {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Añadido de las subtareas como una relación uno a muchos
-  subtasks  Subtask[]
-  createdAt dateTime  @default(now())
-  updatedAt dateTime  @updatedAt
+  subtasks Subtask[]
 
   @@map("tasks")
 }
