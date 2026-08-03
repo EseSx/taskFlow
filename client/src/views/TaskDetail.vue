@@ -5,6 +5,7 @@ import { useTasksStore } from '@/stores/tasks'
 import { useToast } from '@/composables/useToast'
 import { storeToRefs } from 'pinia'
 import TaskForm from '@/components/tasks/TaskForm.vue'
+import SubTaskList from '@/components/tasks/SubTaskList.vue'
 import { formatDate, priorityColor } from '@/utils/validators'
 import {
   ArrowLeft,
