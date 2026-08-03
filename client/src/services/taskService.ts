@@ -61,16 +61,26 @@ export interface ReorderItem {
 
 // ---------- Tasks API ----------
 export const taskService = {
-  getAll: (params?: Record<string, string>) => {
+  getAll: async (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : ''
-    return api.get<Task[]>(`/tasks${query}`)
+    const res = await api.get<any>(`/tasks${query}`)
+    return (res?.data?.tasks ?? res) as Task[]
   },
 
-  getById: (id: number) => api.get<Task>(`/tasks/${id}`),
+  getById: async (id: number) => {
+    const res = await api.get<any>(`/tasks/${id}`)
+    return (res?.data?.task ?? res) as Task
+  },
 
-  create: (data: CreateTaskData) => api.post<Task>('/tasks', data),
+  create: async (data: CreateTaskData) => {
+    const res = await api.post<any>('/tasks', data)
+    return (res?.data?.task ?? res) as Task
+  },
 
-  update: (id: number, data: UpdateTaskData) => api.put<Task>(`/tasks/${id}`, data),
+  update: async (id: number, data: UpdateTaskData) => {
+    const res = await api.put<any>(`/tasks/${id}`, data)
+    return (res?.data?.task ?? res) as Task
+  },
 
   delete: (id: number) => api.delete(`/tasks/${id}`),
 }
