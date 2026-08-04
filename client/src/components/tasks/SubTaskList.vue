@@ -123,8 +123,8 @@ const handleDelete = async (subtaskId: number) => {
         :key="subtask.id"
         class="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-all"
       >
-        <!-- Grip (visual, sin drag implementado) -->
-        <GripVertical class="w-3.5 h-3.5 text-white/15 shrink-0 cursor-grab hidden sm:block" />
+        <!-- Grip (visual, sin drag implementado)
+        <GripVertical class="w-3.5 h-3.5 text-white/15 shrink-0 cursor-grab hidden sm:block" /> -->
 
         <!-- Checkbox -->
         <button
