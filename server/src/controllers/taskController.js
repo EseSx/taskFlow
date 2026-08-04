@@ -28,7 +28,10 @@ const getTasks = async (req, res, next) => {
 const getTask = async (req, res, next) => {
   try {
     // req.params.id viene como string, el servicio lo convierte a número
-    const task = await taskService.getTaskById(req.params.id, req.user.id);
+    const task = await taskService.getTaskById(
+      Number(req.params.id),
+      req.user.id,
+    );
 
     res.status(200).json({
       success: true,

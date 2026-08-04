@@ -10,7 +10,7 @@ const SUBTASK_INCLUDE = {
 };
 
 // Función para obtener todas las tareas de un usuario con filtros opcionales
-const getAllTasks = async (userId, filters = {}) => {
+const getTasks = async (userId, filters = {}) => {
   const where = { userId };
 
   if (filters.priority) where.priority = filters.priority;
@@ -31,7 +31,7 @@ const getAllTasks = async (userId, filters = {}) => {
 // Función para obtener una tarea por su ID y el ID del usuario
 const getTaskById = async (id, userId) => {
   const task = await prisma.task.findFirst({
-    where: { id, userId },
+    where: { id: Number(id), userId },
     include: SUBTASK_INCLUDE,
   });
   if (!task) {
@@ -58,7 +58,9 @@ const createTask = async (userId, data) => {
 
 // Función para actualizar una tarea existente por su ID y el ID del usuario
 const updateTask = async (id, userId, data) => {
-  const task = await prisma.task.findFirst({ where: { id, userId } });
+  const task = await prisma.task.findFirst({
+    where: { id: Number(id), userId },
+  });
   if (!task) {
     const err = new Error("Tarea no encontrada");
     err.statusCode = 404;
@@ -66,7 +68,7 @@ const updateTask = async (id, userId, data) => {
   }
 
   return prisma.task.update({
-    where: { id },
+    where: { id: Number(id) },
     data: {
       ...(data.title !== undefined && { title: data.title }),
       ...(data.description !== undefined && { description: data.description }),
@@ -82,19 +84,21 @@ const updateTask = async (id, userId, data) => {
 
 // Función para eliminar una tarea por su ID y el ID del usuario
 const deleteTask = async (id, userId) => {
-  const task = await prisma.task.findFirst({ where: { id, userId } });
+  const task = await prisma.task.findFirst({
+    where: { id: Number(id), userId },
+  });
   if (!task) {
     const err = new Error("Tarea no encontrada");
     err.statusCode = 404;
     throw err;
   }
   // Las subtareas se eliminan en cascada (onDelete: Cascade en schema)
-  await prisma.task.delete({ where: { id } });
+  await prisma.task.delete({ where: { id: Number(id) } });
   return { message: "Tarea eliminada" };
 };
 
 module.exports = {
-  getAllTasks,
+  getTasks,
   getTaskById,
   createTask,
   updateTask,
