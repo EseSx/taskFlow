@@ -24,20 +24,22 @@
 10. [Estructura del cliente](#estructura-del-cliente)
 11. [Scripts disponibles](#scripts-disponibles)
 12. [Despliegue](#despliegue)
+13. [Roadmap](#roadmap)
 
 ---
 
 ## Descripción general
 
-TaskFlow es una aplicación web completa que permite a los usuarios gestionar sus tareas personales de forma organizada. Cada usuario tiene su propio espacio privado con registro, inicio de sesión y CRUD completo de tareas.
+TaskFlow es una aplicación web completa que permite a los usuarios gestionar sus tareas personales de forma organizada. Cada usuario tiene su propio espacio privado con registro, inicio de sesión y CRUD completo de tareas y subtareas.
 
 **Funcionalidades principales:**
 
 - Registro e inicio de sesión con JWT
 - Crear, editar, eliminar y marcar tareas como completadas
+- Subtareas dentro de cada tarea con barra de progreso
 - Filtrar tareas por estado, prioridad y búsqueda de texto
-- Vista de detalle por tarea
-- Dashboard con estadísticas y progreso
+- Vista de detalle por tarea con edición inline
+- Dashboard con estadísticas y progreso general
 - Diseño responsive (mobile-first)
 - Notificaciones toast en tiempo real
 
@@ -46,73 +48,91 @@ TaskFlow es una aplicación web completa que permite a los usuarios gestionar su
 ## Estructura del proyecto
 
 ```
-taskFlow/
-├── client/                         # Frontend — Vue 3 + Vite + TailwindCSS
-│   ├── public/
-│   │   └── favicon.ico
-│   ├── src/
-│   │   ├── assets/
-│   │   │   └── main.css            # Punto de entrada de Tailwind
-│   │   ├── components/
-│   │   │   ├── layout/
-│   │   │   │   ├── Navbar.vue      # Barra de navegación superior
-│   │   │   │   └── Sidebar.vue     # Menú lateral
-│   │   │   ├── tasks/
-│   │   │   │   ├── TaskCard.vue    # Tarjeta de tarea en el listado
-│   │   │   │   └── TaskForm.vue    # Formulario crear/editar tarea
-│   │   │   └── ui/
-│   │   │       └── Toast.vue       # Sistema de notificaciones
-│   │   ├── composables/
-│   │   │   └── useToast.ts         # Lógica reutilizable de toasts
-│   │   ├── layouts/
-│   │   │   ├── DashboardLayout.vue # Layout con sidebar y navbar
-│   │   │   └── PublicLayout.vue    # Layout para login/registro
-│   │   ├── router/
-│   │   │   └── index.ts            # Rutas y guardas de navegación
-│   │   ├── services/
-│   │   │   ├── api.ts              # Cliente HTTP centralizado
-│   │   │   └── taskService.ts      # Servicios de la API de tareas
-│   │   ├── stores/
-│   │   │   ├── auth.ts             # Estado global de autenticación (Pinia)
-│   │   │   ├── tasks.ts            # Estado global de tareas (Pinia)
-│   │   │   └── ui.ts               # Estado de la UI (sidebar)
-│   │   ├── utils/
-│   │   │   └── validators.ts       # Validaciones y utilidades
-│   │   └── views/
-│   │       ├── Dashboard.vue       # Vista principal con estadísticas
-│   │       ├── Login.vue           # Vista de inicio de sesión
-│   │       ├── Register.vue        # Vista de registro
-│   │       ├── TaskDetail.vue      # Detalle de una tarea
-│   │       └── Tasks.vue           # Listado y gestión de tareas
-│   ├── index.html
-│   ├── vite.config.ts
-│   ├── tsconfig.json
-│   └── package.json
-│
-└── server/                         # Backend — Node.js + Express + Prisma
-    ├── prisma/
-    │   ├── schema.prisma           # Modelo de datos (User, Task)
-    │   └── migrations/             # Historial de migraciones SQL
-    └── src/
-        ├── config/
-        │   └── env.js              # Carga y validación de variables de entorno
-        ├── controllers/
-        │   ├── authController.js   # Handlers de registro, login y perfil
-        │   └── taskController.js   # Handlers del CRUD de tareas
-        ├── database/
-        │   └── client.js           # Singleton del cliente Prisma
-        ├── middleware/
-        │   ├── auth.js             # Verificación de token JWT (protect)
-        │   ├── errorHandler.js     # Manejo global de errores y 404
-        │   └── validate.js         # Validación del body de las requests
-        ├── routes/
-        │   ├── auth.js             # Rutas /api/auth/*
-        │   └── tasks.js            # Rutas /api/tasks/*
-        ├── services/
-        │   ├── authService.js      # Lógica de negocio de autenticación
-        │   └── taskService.js      # Lógica de negocio de tareas
-        ├── app.js                  # Configuración de Express (middlewares + rutas)
-        └── server.js               # Punto de entrada del servidor
+taskFlow
+├─ README.md
+├─ client
+│  ├─ .prettierrc.json
+│  ├─ README.md
+│  ├─ env.d.ts
+│  ├─ index.html
+│  ├─ package-lock.json
+│  ├─ package.json
+│  ├─ public
+│  │  └─ favicon.ico
+│  ├─ src
+│  │  ├─ App.vue
+│  │  ├─ assets
+│  │  │  └─ main.css
+│  │  ├─ components
+│  │  │  ├─ layout
+│  │  │  │  ├─ Navbar.vue        # Topbar con toggle sidebar y logout
+│  │  │  │  └─ Sidebar.vue       # Navegación lateral colapsable
+│  │  │  ├─ tasks
+│  │  │  │  ├─ SubTaskList.vue   # Lista de subtareas con progreso y edición inline
+│  │  │  │  ├─ TaskCard.vue      # Tarjeta de tarea con barra de progreso de subtareas
+│  │  │  │  └─ TaskForm.vue      # Formulario de creación / edición de tareas
+│  │  │  └─ ui
+│  │  │     └─ Toast.vue         # Notificaciones globales
+│  │  ├─ composables
+│  │  │  └─ useToast.ts          # Singleton para notificaciones
+│  │  ├─ layouts
+│  │  │  ├─ DashboardLayout.vue  # Layout autenticado (sidebar + navbar)
+│  │  │  └─ PublicLayout.vue     # Layout para login y registro
+│  │  ├─ main.ts
+│  │  ├─ router
+│  │  │  └─ index.ts             # Rutas + navigation guard (JWT)
+│  │  ├─ services
+│  │  │  ├─ api.ts               # Cliente HTTP con JWT automático
+│  │  │  └─ taskService.ts       # Llamadas a la API de tareas y subtareas
+│  │  ├─ stores
+│  │  │  ├─ auth.ts              # Estado de autenticación (Pinia)
+│  │  │  ├─ tasks.ts             # CRUD de tareas y subtareas (Pinia)
+│  │  │  └─ ui.ts                # Estado de UI
+│  │  ├─ utils
+│  │  │  └─ validators.ts        # Validaciones y helpers de formato
+│  │  └─ views
+│  │     ├─ Dashboard.vue        # Estadísticas y resumen
+│  │     ├─ Login.vue            # Inicio de sesión
+│  │     ├─ Register.vue         # Registro de usuario
+│  │     ├─ TaskDetail.vue       # Detalle de tarea + gestión de subtareas
+│  │     └─ Tasks.vue            # Lista de tareas con filtros
+│  ├─ tsconfig.app.json
+│  ├─ tsconfig.json
+│  ├─ tsconfig.node.json
+│  ├─ vercel.json
+│  └─ vite.config.ts
+└─ server
+   ├─ package-lock.json
+   ├─ package.json
+   ├─ prisma
+   │  ├─ migrations
+   │  │  ├─ 20260803160537_init
+   │  │  │  └─ migration.sql
+   │  │  └─ migration_lock.toml
+   │  └─ schema.prisma
+   └─ src
+      ├─ app.js                  # Express + middlewares + registro de rutas
+      ├─ config
+      │  └─ env.js               # Variables de entorno con validación
+      ├─ controllers
+      │  ├─ authController.js    # Registro, login, perfil
+      │  ├─ subtaskController.js # CRUD de subtareas
+      │  └─ taskController.js    # CRUD de tareas
+      ├─ database
+      │  └─ client.js            # Singleton de Prisma Client
+      ├─ middleware
+      │  ├─ auth.js              # Verificación de JWT
+      │  ├─ errorHandler.js      # Manejo global de errores
+      │  └─ validate.js          # Validación de body de requests
+      ├─ routes
+      │  ├─ auth.js              # /api/auth/*
+      │  ├─ subtasks.js          # /api/tasks/:taskId/subtasks/*
+      │  └─ tasks.js             # /api/tasks/*
+      ├─ server.js               # Punto de entrada HTTP
+      └─ services
+         ├─ authService.js       # Lógica de negocio de autenticación
+         ├─ subtaskService.js    # Lógica de negocio de subtareas
+         └─ taskService.js       # Lógica de negocio de tareas
 ```
 
 ---
@@ -196,15 +216,10 @@ Creá el archivo `server/.env` copiando el siguiente template y completando los 
 
 ```env
 # ── Base de datos ─────────────────────────────────
-# Cadena de conexión a PostgreSQL
-# Formato: postgresql://USUARIO:CONTRASEÑA@HOST:PUERTO/NOMBRE_DB
 DATABASE_URL="postgresql://postgres:tu_contraseña@localhost:5432/taskflow"
 
 # ── Autenticación ──────────────────────────────────
-# Secreto para firmar los tokens JWT (usá una cadena larga y aleatoria)
 JWT_SECRET="tu_secreto_jwt_muy_seguro_aqui"
-
-# Tiempo de expiración del token (7d = 7 días)
 JWT_EXPIRES_IN="7d"
 
 # ── Servidor ───────────────────────────────────────
@@ -222,7 +237,6 @@ CLIENT_URL="http://localhost:5173"
 Creá el archivo `client/.env`:
 
 ```env
-# URL base de la API del backend
 VITE_API_URL="http://localhost:3000/api"
 ```
 
@@ -231,8 +245,6 @@ VITE_API_URL="http://localhost:3000/api"
 ## Base de datos
 
 ### Crear la base de datos en PostgreSQL
-
-Conectate a PostgreSQL y creá la base de datos:
 
 ```bash
 psql -U postgres
@@ -245,28 +257,27 @@ CREATE DATABASE taskflow;
 
 ### Ejecutar las migraciones
 
-Desde la carpeta `server/`, aplicá las migraciones para crear las tablas:
-
 ```bash
 cd server
 npm run migrate:deploy
 ```
 
-Este comando ejecuta la migración inicial que crea:
+Este comando crea las siguientes tablas:
 
-- Tabla `users` con campos: `id`, `email`, `password`, `name`, `createdAt`, `updatedAt`
-- Tabla `tasks` con campos: `id`, `title`, `description`, `completed`, `priority`, `dueDate`, `createdAt`, `updatedAt`, `userId`
-- Enum `Priority` con valores: `LOW`, `MEDIUM`, `HIGH`
+- **`users`** — `id`, `email`, `password`, `name`, `createdAt`, `updatedAt`
+- **`tasks`** — `id`, `title`, `description`, `completed`, `priority`, `dueDate`, `userId`, `createdAt`, `updatedAt`
+- **`Subtask`** — `id`, `title`, `completed`, `order`, `taskId`, `createdAt`, `updatedAt`
+- **Enum `Priority`** — `LOW`, `MEDIUM`, `HIGH`
 
-**Alternativa para desarrollo** (crea la base de datos y genera migraciones automáticamente):
+Las subtareas tienen `onDelete: Cascade` — al eliminar una tarea se eliminan todas sus subtareas automáticamente.
+
+**Alternativa para desarrollo** (crea migraciones automáticamente):
 
 ```bash
 npm run migrate:dev
 ```
 
 ### Verificar el esquema (opcional)
-
-Podés explorar la base de datos visualmente con Prisma Studio:
 
 ```bash
 npm run studio
@@ -276,8 +287,6 @@ npm run studio
 ---
 
 ## Ejecución en local
-
-### Opción A: Ejecutar servidor y cliente por separado (recomendado)
 
 **Terminal 1 — Backend:**
 
@@ -295,9 +304,7 @@ npm run dev
 # Cliente corriendo en http://localhost:5173
 ```
 
-### Opción B: Verificar que el servidor esté activo
-
-Una vez iniciado el backend, podés confirmar que funciona correctamente:
+### Verificar que el servidor está activo
 
 ```bash
 curl http://localhost:3000/api/health
@@ -319,16 +326,16 @@ Respuesta esperada:
 2. Hacé clic en **Registrate** y creá una cuenta nueva
 3. Iniciá sesión con tus credenciales
 4. Desde el **Dashboard** o la vista de **Tareas**, creá una nueva tarea
-5. Probá los filtros por estado y prioridad
-6. Hacé clic en una tarea para ver el detalle completo
+5. Hacé clic en la tarea para ir al detalle y agregar subtareas
+6. Probá los filtros por estado y prioridad
 
 ---
 
 ## Referencia de la API
 
-La URL base del servidor es: `http://localhost:3000/api`
+URL base: `http://localhost:3000/api`
 
-Las rutas protegidas requieren el header:
+Las rutas protegidas (`🔒`) requieren el header:
 
 ```
 Authorization: Bearer <token>
@@ -359,12 +366,7 @@ Registra un nuevo usuario.
   "success": true,
   "message": "Usuario registrado exitosamente",
   "data": {
-    "user": {
-      "id": 1,
-      "email": "juan@ejemplo.com",
-      "name": "Juan Pérez",
-      "createdAt": "2026-05-31T12:00:00.000Z"
-    },
+    "user": { "id": 1, "email": "juan@ejemplo.com", "name": "Juan Pérez", "createdAt": "..." },
     "token": "eyJhbGciOiJIUzI1NiIs..."
   }
 }
@@ -390,9 +392,8 @@ Autentica a un usuario y devuelve un token JWT.
 ```json
 {
   "success": true,
-  "message": "Login exitoso",
   "data": {
-    "user": { "id": 1, "email": "juan@ejemplo.com", "name": "Juan Pérez", "createdAt": "..." },
+    "user": { "id": 1, "email": "juan@ejemplo.com", "name": "Juan Pérez" },
     "token": "eyJhbGciOiJIUzI1NiIs..."
   }
 }
@@ -404,39 +405,21 @@ Autentica a un usuario y devuelve un token JWT.
 
 Devuelve el perfil del usuario autenticado.
 
-**Respuesta `200`:**
-
-```json
-{
-  "success": true,
-  "data": {
-    "user": { "id": 1, "email": "juan@ejemplo.com", "name": "Juan Pérez", "createdAt": "..." }
-  }
-}
-```
-
 ---
 
-### Tareas
+### Tareas 🔒
 
-Todas las rutas de tareas requieren autenticación (`🔒`).
+Todas las rutas de tareas requieren autenticación.
 
-#### `GET /tasks` 🔒
+#### `GET /tasks`
 
-Obtiene todas las tareas del usuario. Soporta filtros opcionales por query string.
+Obtiene todas las tareas del usuario. Cada tarea incluye sus subtareas.
 
 | Parámetro | Tipo | Descripción |
 |---|---|---|
 | `completed` | `boolean` | Filtrar por estado (`true` o `false`) |
 | `priority` | `string` | Filtrar por prioridad (`LOW`, `MEDIUM`, `HIGH`) |
 | `search` | `string` | Búsqueda en título y descripción |
-
-**Ejemplo:**
-
-```
-GET /tasks?priority=HIGH&completed=false
-GET /tasks?search=reunión
-```
 
 **Respuesta `200`:**
 
@@ -449,13 +432,16 @@ GET /tasks?search=reunión
       {
         "id": 1,
         "title": "Preparar informe",
-        "description": "Informe mensual de ventas",
         "completed": false,
         "priority": "HIGH",
         "dueDate": "2026-06-15T00:00:00.000Z",
-        "createdAt": "2026-05-31T10:00:00.000Z",
-        "updatedAt": "2026-05-31T10:00:00.000Z",
-        "userId": 1
+        "userId": 1,
+        "subtasks": [
+          { "id": 1, "title": "Recopilar datos", "completed": true, "order": 0, "taskId": 1 },
+          { "id": 2, "title": "Redactar borrador", "completed": false, "order": 1, "taskId": 1 }
+        ],
+        "createdAt": "...",
+        "updatedAt": "..."
       }
     ]
   }
@@ -464,7 +450,7 @@ GET /tasks?search=reunión
 
 ---
 
-#### `POST /tasks` 🔒
+#### `POST /tasks`
 
 Crea una nueva tarea.
 
@@ -481,55 +467,19 @@ Crea una nueva tarea.
 
 > `title` es el único campo requerido. `priority` acepta `LOW`, `MEDIUM` o `HIGH` (por defecto `MEDIUM`).
 
-**Respuesta `201`:**
+---
 
-```json
-{
-  "success": true,
-  "message": "Tarea creada exitosamente",
-  "data": { "task": { ...tarea } }
-}
-```
+#### `GET /tasks/:id`
+
+Obtiene el detalle de una tarea por su ID, incluyendo sus subtareas.
 
 ---
 
-#### `GET /tasks/:id` 🔒
+#### `PUT /tasks/:id`
 
-Obtiene el detalle de una tarea por su ID.
+Actualiza una tarea. Todos los campos son opcionales.
 
-**Respuesta `200`:**
-
-```json
-{
-  "success": true,
-  "data": { "task": { ...tarea } }
-}
-```
-
-**Error `404`:**
-
-```json
-{
-  "success": false,
-  "message": "Tarea no encontrada"
-}
-```
-
----
-
-#### `PUT /tasks/:id` 🔒
-
-Actualiza una tarea existente. Todos los campos son opcionales.
-
-**Body (ejemplo parcial):**
-
-```json
-{
-  "completed": true
-}
-```
-
-**Body completo disponible:**
+**Body:**
 
 ```json
 {
@@ -541,23 +491,95 @@ Actualiza una tarea existente. Todos los campos son opcionales.
 }
 ```
 
+---
+
+#### `DELETE /tasks/:id`
+
+Elimina una tarea y todas sus subtareas en cascada.
+
+**Respuesta `204`:** Sin contenido.
+
+---
+
+### Subtareas 🔒
+
+Todas las rutas de subtareas están anidadas bajo una tarea y requieren autenticación. El backend verifica que la tarea pertenezca al usuario antes de operar sobre sus subtareas.
+
+#### `GET /tasks/:taskId/subtasks`
+
+Obtiene todas las subtareas de una tarea, ordenadas por `order` y `createdAt`.
+
 **Respuesta `200`:**
 
 ```json
+[
+  { "id": 1, "title": "Recopilar datos", "completed": true,  "order": 0, "taskId": 6 },
+  { "id": 2, "title": "Redactar borrador", "completed": false, "order": 1, "taskId": 6 }
+]
+```
+
+---
+
+#### `POST /tasks/:taskId/subtasks`
+
+Crea una nueva subtarea.
+
+**Body:**
+
+```json
+{ "title": "Nueva subtarea" }
+```
+
+**Respuesta `201`:**
+
+```json
+{ "id": 3, "title": "Nueva subtarea", "completed": false, "order": 2, "taskId": 6, "createdAt": "...", "updatedAt": "..." }
+```
+
+---
+
+#### `PUT /tasks/:taskId/subtasks/:id`
+
+Actualiza una subtarea (título, estado o posición).
+
+**Body (todos los campos opcionales):**
+
+```json
 {
-  "success": true,
-  "message": "Tarea actualizada exitosamente",
-  "data": { "task": { ...tarea actualizada } }
+  "title": "Título actualizado",
+  "completed": true,
+  "order": 0
 }
 ```
 
 ---
 
-#### `DELETE /tasks/:id` 🔒
+#### `DELETE /tasks/:taskId/subtasks/:id`
 
-Elimina una tarea.
+Elimina una subtarea.
 
-**Respuesta `204`:** Sin contenido.
+**Respuesta `200`:**
+
+```json
+{ "message": "Subtarea eliminada" }
+```
+
+---
+
+#### `PUT /tasks/:taskId/subtasks/reorder`
+
+Reordena las subtareas de una tarea.
+
+**Body:**
+
+```json
+{
+  "items": [
+    { "id": 2, "order": 0 },
+    { "id": 1, "order": 1 }
+  ]
+}
+```
 
 ---
 
@@ -565,10 +587,10 @@ Elimina una tarea.
 
 | Código | Descripción |
 |---|---|
-| `400` | Datos de entrada inválidos (body mal formado o campos faltantes) |
+| `400` | Datos de entrada inválidos |
 | `401` | No autenticado o token inválido/expirado |
 | `404` | Recurso no encontrado |
-| `409` | Conflicto (por ejemplo, email ya registrado) |
+| `409` | Conflicto (ej: email ya registrado) |
 | `500` | Error interno del servidor |
 
 ---
@@ -580,7 +602,7 @@ Elimina una tarea.
 ```
 App.vue (checkAuth)
   └── Si hay token en localStorage → GET /auth/me → carga usuario en store
-  └── Si no hay token → nada (el guard de router redirige al login)
+  └── Si no hay token → el guard del router redirige a /login
 
 router/index.ts
   └── Rutas con meta.requiresAuth = true → verifica token en localStorage
@@ -592,16 +614,17 @@ router/index.ts
 | Store | Responsabilidad |
 |---|---|
 | `auth.ts` | Usuario autenticado, login, logout, register |
-| `tasks.ts` | Lista de tareas, filtros, operaciones CRUD |
+| `tasks.ts` | Lista de tareas, filtros, CRUD de tareas y subtareas |
 | `ui.ts` | Estado del sidebar |
 
-### Flujo de datos de tareas
+### Flujo de datos
 
 ```
 Tasks.vue / TaskDetail.vue
-  └── llama a tasksStore.fetchTasks() / createTask() / updateTask() / deleteTask()
-      └── tasksStore → taskService.ts (llama a la API)
+  └── tasksStore (Pinia)
+      └── taskService.ts / subtaskService
           └── api.ts (cliente HTTP con token automático)
+              └── backend Express → Prisma → PostgreSQL
 ```
 
 ---
@@ -611,11 +634,11 @@ Tasks.vue / TaskDetail.vue
 ### Servidor (`/server`)
 
 ```bash
-npm run dev          # Inicia con nodemon (recarga automática)
-npm run start        # Inicia en producción
-npm run migrate:dev  # Crea y aplica nuevas migraciones (desarrollo)
+npm run dev            # Inicia con nodemon (recarga automática)
+npm run start          # Inicia en producción
+npm run migrate:dev    # Crea y aplica nuevas migraciones (desarrollo)
 npm run migrate:deploy # Aplica migraciones existentes (producción)
-npm run studio       # Abre Prisma Studio en http://localhost:5555
+npm run studio         # Abre Prisma Studio en http://localhost:5555
 ```
 
 ### Cliente (`/client`)
@@ -636,26 +659,40 @@ El proyecto está configurado para desplegarse en:
 
 - **Frontend:** [Vercel](https://vercel.com) — incluye `client/vercel.json` con rewrites para SPA
 - **Backend:** [Render](https://render.com) — compatible con el servidor Express
-- **Base de datos:** [Neon](https://neon.tech) — PostgreSQL serverless (recomendado para producción)
+- **Base de datos:** [Neon](https://neon.tech) — PostgreSQL serverless
 
 ### Variables de entorno en producción
 
-En el servidor de producción, configurá las mismas variables del archivo `.env`:
+**Backend (Render):**
 
 ```
-DATABASE_URL     → URL de conexión a la base de datos de producción
-JWT_SECRET       → Secreto seguro y único (no usar el de desarrollo)
-JWT_EXPIRES_IN   → 7d
-NODE_ENV         → production
-PORT             → (asignado automáticamente por la plataforma)
-CLIENT_URL       → URL pública del frontend desplegado
+DATABASE_URL   → URL directa de Neon (sin pooler, para migraciones)
+JWT_SECRET     → Clave segura y única
+JWT_EXPIRES_IN → 7d
+NODE_ENV       → production
+CLIENT_URL     → URL pública del frontend en Vercel
 ```
 
-En el cliente de producción (Vercel):
+**Frontend (Vercel):**
 
 ```
-VITE_API_URL → URL pública del backend desplegado (ej: https://taskflow-api.onrender.com/api)
+VITE_API_URL → URL pública del backend (ej: https://taskflow-cw9v.onrender.com/api)
 ```
+
+> **Nota sobre Neon y migraciones:** Usá la URL de conexión **directa** (sin `-pooler` en el hostname) para correr `prisma migrate deploy`. La URL con pooler es solo para queries en runtime.
+
+---
+
+## Roadmap
+
+Funcionalidades planeadas para versiones futuras:
+
+- **Autenticación con Google (OAuth)** — login con cuenta de Gmail sin necesidad de registrarse manualmente
+- **Mejora de la sincronización automática** — reemplazar el refetch completo de tareas por actualizaciones optimistas en el store, para que la UI no parpadee ni recargue innecesariamente tras cada acción
+- **Fechas límite con alertas** — notificaciones cuando una tarea está próxima a vencer
+- **Categorías y etiquetas** — agrupar tareas por proyecto o contexto
+- **Modo colaborativo** — compartir listas de tareas con otros usuarios
+- **Drag & drop** — reordenar tareas y subtareas arrastrando
 
 ---
 
