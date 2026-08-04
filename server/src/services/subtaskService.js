@@ -15,7 +15,7 @@ const assertTaskOwnership = async (taskId, userId) => {
 // ---------- Función para obtener las subtareas de una tarea específica ----------
 const getSubtasks = async (taskId, userId) => {
   await assertTaskOwnership(taskId, userId);
-  return prisma.subTask.findMany({
+  return prisma.subtask.findMany({
     // Busca todas las subtareas asociadas a la tarea específica
     where: { taskId },
     orderBy: [{ order: "asc" }, { createdAt: "asc" }],
@@ -26,9 +26,9 @@ const getSubtasks = async (taskId, userId) => {
 const createSubtask = async (taskId, userId, { title }) => {
   await assertTaskOwnership(taskId, userId);
 
-  const count = await prisma.subTask.count({ where: { taskId } }); // Cuenta cuántas subtareas existen para la tarea específica
+  const count = await prisma.subtask.count({ where: { taskId } }); // Cuenta cuántas subtareas existen para la tarea específica
 
-  return prisma.subTask.create({
+  return prisma.subtask.create({
     data: { title, taskId, order: count },
   }); // Crea una nueva subtarea con el título proporcionado, asociada a la tarea específica y con un orden basado en la cantidad de subtareas existentes
 };
@@ -37,7 +37,7 @@ const createSubtask = async (taskId, userId, { title }) => {
 const updateSubtask = async (taskId, subtaskId, userId, data) => {
   await assertTaskOwnership(taskId, userId);
 
-  const subtask = await prisma.subTask.findFirst({
+  const subtask = await prisma.subtask.findFirst({
     where: { id: subtaskId, taskId },
   }); // Busca la subtarea específica asociada a la tarea
   if (!subtask) {
@@ -46,7 +46,7 @@ const updateSubtask = async (taskId, subtaskId, userId, data) => {
     throw err;
   } // Si no se encuentra la subtarea, lanza un error con código de estado 404
 
-  return prisma.subTask.update({
+  return prisma.subtask.update({
     where: { id: subtaskId },
     data: {
       ...(data.title !== undefined && { title: data.title }),
@@ -60,7 +60,7 @@ const updateSubtask = async (taskId, subtaskId, userId, data) => {
 const deleteSubtask = async (taskId, subtaskId, userId) => {
   await assertTaskOwnership(taskId, userId);
 
-  const subtask = await prisma.subTask.findFirst({
+  const subtask = await prisma.subtask.findFirst({
     where: { id: subtaskId, taskId },
   }); // Busca la subtarea específica asociada a la tarea
   if (!subtask) {
@@ -69,7 +69,7 @@ const deleteSubtask = async (taskId, subtaskId, userId) => {
     throw err;
   } // Si no se encuentra la subtarea, lanza un error con código de estado 404
 
-  await prisma.subTask.delete({ where: { id: subtaskId } }); // Elimina la subtarea específica de la base de datos
+  await prisma.subtask.delete({ where: { id: subtaskId } }); // Elimina la subtarea específica de la base de datos
   return { message: "Subtarea eliminada" }; // Devuelve un mensaje indicando que la subtarea ha sido eliminada
 };
 
@@ -80,7 +80,7 @@ const reorderSubtasks = async (taskId, userId, items) => {
   // Actualizar en paralelo
   await Promise.all(
     items.map(({ id, order }) =>
-      prisma.subTask.updateMany({
+      prisma.subtask.updateMany({
         where: { id, taskId },
         data: { order },
       }),
