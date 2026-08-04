@@ -58,7 +58,7 @@ const handleToggle = async () => {
   if (!currentTask.value) return
   try {
     await tasksStore.updateTask(currentTask.value.id, { completed: !currentTask.value.completed })
-    toast.success(currentTask.value.completed ? 'Marcada como pendiente' : 'Tarea completada ✓')
+    toast.success(currentTask.value.completed ? 'Tarea completada ✓' : 'Marcada como pendiente')
   } catch {
     toast.error('Error al actualizar la tarea')
   }
