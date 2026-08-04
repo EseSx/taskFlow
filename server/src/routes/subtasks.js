@@ -1,9 +1,9 @@
 const router = require("express").Router({ mergeParams: true }); // mergeParams para acceder a :taskId
-const auth = require("../middleware/auth");
+const { protect } = require("../middleware/auth");
 const ctrl = require("../controllers/subtaskController");
 
 // Todas las rutas requieren autenticación
-router.use(auth);
+router.use(protect);
 
 // /api/tasks/:taskId/subtasks
 router.get("/", ctrl.getSubtasks);
