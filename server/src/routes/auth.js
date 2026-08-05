@@ -1,25 +1,12 @@
 // ── Rutas de autenticación ────────────────────────────────────────
-// Prefijo: /api/auth
-// Rutas públicas (no requieren token) y una ruta protegida (/me)
-
-const express = require("express");
-const router = express.Router();
-
-// Importamos los controladores y middlewares necesarios
-const { register, login, getMe } = require("../controllers/authController");
+const router = require("express").Router();
+const ctrl = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
-const { validateRegister, validateLogin } = require("../middleware/validate");
 
-// POST /api/auth/register — Registra un nuevo usuario
-// validateRegister verifica que el body tenga los datos correctos
-router.post("/register", validateRegister, register);
-
-// POST /api/auth/login — Autentica a un usuario y devuelve un token
-// validateLogin verifica que email y password estén presentes
-router.post("/login", validateLogin, login);
-
-// GET /api/auth/me — Devuelve el perfil del usuario autenticado
-// protect verifica que el token JWT sea válido
-router.get("/me", protect, getMe);
+router.post("/register", ctrl.register); // Crea un nuevo usuario y devuelve access + refresh tokens
+router.post("/login", ctrl.login); // Devuelve access + refresh tokens para un usuario existente
+router.post("/refresh", ctrl.refreshToken); // Renueva el access token usando el refresh token
+router.post("/logout", ctrl.logout); // Limpia ambas cookies
+router.get("/me", protect, ctrl.getMe); // Requiere access token válido
 
 module.exports = router;

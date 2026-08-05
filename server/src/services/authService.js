@@ -1,74 +1,150 @@
 // ── Servicio de autenticación ─────────────────────────────────────
-// Contiene la lógica de negocio para registro y login
-// Los controladores delegan acá; esto mantiene los controladores limpios
-
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const prisma = require("../database/client");
-const { JWT_SECRET, JWT_EXPIRES_IN } = require("../config/env");
+const {
+  JWT_SECRET,
+  JWT_REFRESH_SECRET,
+  JWT_EXPIRES_IN,
+  JWT_REFRESH_EXPIRES_IN,
+} = require("../config/env");
 
-// Genera un token JWT firmado con el id del usuario
-const generateToken = (userId) => {
-  return jwt.sign(
-    { id: userId }, // Payload: solo guardamos el id
-    JWT_SECRET, // Secreto para firmar
-    { expiresIn: JWT_EXPIRES_IN }, // Tiempo de expiración
-  );
+// ── Validación de contraseña fuerte ──────────────────────────────
+// Mínimo 8 caracteres, al menos una mayúscula, una minúscula y un número
+const validatePassword = (password) => {
+  if (!password || password.length < 8) {
+    return "La contraseña debe tener al menos 8 caracteres";
+  }
+  if (!/[A-Z]/.test(password)) {
+    return "La contraseña debe contener al menos una mayúscula";
+  }
+  if (!/[a-z]/.test(password)) {
+    return "La contraseña debe contener al menos una minúscula";
+  }
+  if (!/[0-9]/.test(password)) {
+    return "La contraseña debe contener al menos un número";
+  }
+  return null; // null = válida
 };
 
-// Registra un nuevo usuario en la base de datos
-const register = async ({ email, password, name }) => {
-  // Verificamos si el email ya existe en la base de datos
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    const error = new Error("El email ya está registrado");
-    error.statusCode = 409;
-    throw error;
-  }
+// ── Generación de tokens ──────────────────────────────────────────
+const generateAccessToken = (userId) =>
+  jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-  // Hasheamos el password con bcrypt (10 salt rounds es el estándar)
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  // Creamos el usuario en la base de datos
-  const user = await prisma.user.create({
-    data: { email, password: hashedPassword, name },
-    // Seleccionamos solo los campos seguros (nunca devolvemos el password)
-    select: { id: true, email: true, name: true, createdAt: true },
+const generateRefreshToken = (userId) =>
+  jwt.sign({ id: userId }, JWT_REFRESH_SECRET, {
+    expiresIn: JWT_REFRESH_EXPIRES_IN,
   });
 
-  // Generamos el token JWT para el nuevo usuario
-  const token = generateToken(user.id);
+// ── Register ──────────────────────────────────────────────────────
+const register = async ({ name, email, password }) => {
+  // Validar contraseña antes de cualquier operación
+  const passwordError = validatePassword(password);
+  if (passwordError) {
+    const err = new Error(passwordError);
+    err.statusCode = 400;
+    throw err;
+  }
 
-  return { user, token };
+  // Verificar email único
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    const err = new Error("El email ya está registrado");
+    err.statusCode = 409;
+    throw err;
+  }
+
+  // Hashear contraseña con bcrypt (salt rounds = 12)
+  const hashedPassword = await bcrypt.hash(password, 12);
+
+  const user = await prisma.user.create({
+    data: { name, email, password: hashedPassword },
+    select: { id: true, name: true, email: true, createdAt: true },
+  });
+
+  const accessToken = generateAccessToken(user.id);
+  const refreshToken = generateRefreshToken(user.id);
+
+  return { user, accessToken, refreshToken };
 };
 
-// Autentica a un usuario existente
+// ── Login ─────────────────────────────────────────────────────────
 const login = async ({ email, password }) => {
-  // Buscamos el usuario por email (incluyendo el password para comparar)
   const user = await prisma.user.findUnique({ where: { email } });
 
-  if (!user) {
-    const error = new Error("Credenciales inválidas");
-    error.statusCode = 401;
-    throw error;
+  // Siempre comparamos con bcrypt aunque el usuario no exista
+  // para evitar timing attacks que permitan enumerar emails
+  const dummyHash = "$2a$12$dummy.hash.to.prevent.timing.attacks.padding";
+  const isValid = user
+    ? await bcrypt.compare(password, user.password)
+    : await bcrypt.compare(password, dummyHash);
+
+  if (!user || !isValid) {
+    const err = new Error("Credenciales inválidas");
+    err.statusCode = 401;
+    throw err;
   }
 
-  // Comparamos el password ingresado con el hash almacenado
-  const isMatch = await bcrypt.compare(password, user.password);
+  const safeUser = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    createdAt: user.createdAt,
+  };
+  const accessToken = generateAccessToken(user.id);
+  const refreshToken = generateRefreshToken(user.id);
 
-  if (!isMatch) {
-    const error = new Error("Credenciales inválidas");
-    error.statusCode = 401;
-    throw error;
-  }
-
-  // Generamos el token para el usuario autenticado
-  const token = generateToken(user.id);
-
-  // Retornamos el usuario sin el password
-  const { password: _, ...userWithoutPassword } = user;
-
-  return { user: userWithoutPassword, token };
+  return { user: safeUser, accessToken, refreshToken };
 };
 
-module.exports = { register, login };
+// ── Refresh ───────────────────────────────────────────────────────
+// Verifica el refresh token y emite un nuevo access token
+const refresh = async (refreshToken) => {
+  if (!refreshToken) {
+    const err = new Error("Refresh token requerido");
+    err.statusCode = 401;
+    throw err;
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+  } catch {
+    const err = new Error("Refresh token inválido o expirado");
+    err.statusCode = 401;
+    throw err;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.id },
+    select: { id: true, name: true, email: true, createdAt: true },
+  });
+
+  if (!user) {
+    const err = new Error("Usuario no encontrado");
+    err.statusCode = 401;
+    throw err;
+  }
+
+  // Rotación: emitimos un nuevo par de tokens
+  const newAccessToken = generateAccessToken(user.id);
+  const newRefreshToken = generateRefreshToken(user.id);
+
+  return { user, accessToken: newAccessToken, refreshToken: newRefreshToken };
+};
+
+// ── Get profile ───────────────────────────────────────────────────
+const getProfile = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true, createdAt: true },
+  });
+  if (!user) {
+    const err = new Error("Usuario no encontrado");
+    err.statusCode = 404;
+    throw err;
+  }
+  return user;
+};
+
+module.exports = { register, login, refresh, getProfile };

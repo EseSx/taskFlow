@@ -1,65 +1,97 @@
 // ── Controlador de autenticación ──────────────────────────────────
-// Maneja las requests HTTP de registro y login
-// Delega la lógica de negocio al authService
-// Solo se encarga de parsear el request y formatear la response
-
 const authService = require("../services/authService");
+const { NODE_ENV } = require("../config/env");
+
+// ── Configuración de cookies ──────────────────────────────────────
+// httpOnly: JavaScript nunca puede leer la cookie (protección XSS)
+// secure: solo se envía por HTTPS (en producción)
+// sameSite: 'lax' previene CSRF en la mayoría de casos
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+};
+
+const ACCESS_COOKIE_OPTIONS = {
+  ...COOKIE_OPTIONS,
+  maxAge: 15 * 60 * 1000, // 15 minutos en ms
+};
+
+const REFRESH_COOKIE_OPTIONS = {
+  ...COOKIE_OPTIONS,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en ms
+};
+
+// ── Helper para setear ambas cookies ─────────────────────────────
+const setTokenCookies = (res, accessToken, refreshToken) => {
+  res.cookie("access_token", accessToken, ACCESS_COOKIE_OPTIONS);
+  res.cookie("refresh_token", refreshToken, REFRESH_COOKIE_OPTIONS);
+};
+
+// ── Helper para limpiar cookies al logout ─────────────────────────
+const clearTokenCookies = (res) => {
+  res.clearCookie("access_token", { ...COOKIE_OPTIONS });
+  res.clearCookie("refresh_token", { ...COOKIE_OPTIONS });
+};
 
 // POST /api/auth/register
-// Registra un nuevo usuario
 const register = async (req, res, next) => {
   try {
-    // Extraemos los datos del body de la request
-    const { email, password, name } = req.body;
-
-    // Llamamos al servicio que maneja la lógica de registro
-    const { user, token } = await authService.register({
-      email,
-      password,
-      name,
-    });
-
-    // Respondemos con 201 Created y los datos del nuevo usuario
-    res.status(201).json({
-      success: true,
-      message: "Usuario registrado exitosamente",
-      data: { user, token },
-    });
-  } catch (error) {
-    // Pasamos el error al middleware de manejo de errores
-    next(error);
+    const { user, accessToken, refreshToken } = await authService.register(
+      req.body,
+    );
+    setTokenCookies(res, accessToken, refreshToken);
+    res.status(201).json({ success: true, data: { user } });
+  } catch (err) {
+    next(err);
   }
 };
 
 // POST /api/auth/login
-// Autentica a un usuario existente
 const login = async (req, res, next) => {
   try {
-    // Extraemos email y password del body
-    const { email, password } = req.body;
-
-    // Llamamos al servicio que verifica las credenciales
-    const { user, token } = await authService.login({ email, password });
-
-    // Respondemos con 200 OK y el token JWT
-    res.status(200).json({
-      success: true,
-      message: "Login exitoso",
-      data: { user, token },
-    });
-  } catch (error) {
-    next(error);
+    const { user, accessToken, refreshToken } = await authService.login(
+      req.body,
+    );
+    setTokenCookies(res, accessToken, refreshToken);
+    res.json({ success: true, data: { user } });
+  } catch (err) {
+    next(err);
   }
 };
 
-// GET /api/auth/me
-// Devuelve el usuario autenticado (requiere token)
-const getMe = async (req, res) => {
-  // req.user ya fue cargado por el middleware protect
-  res.status(200).json({
-    success: true,
-    data: { user: req.user },
-  });
+// POST /api/auth/refresh
+// El cliente llama a este endpoint cuando el access token expira
+const refreshToken = async (req, res, next) => {
+  try {
+    const token = req.cookies.refresh_token;
+    const {
+      user,
+      accessToken,
+      refreshToken: newRefreshToken,
+    } = await authService.refresh(token);
+    setTokenCookies(res, accessToken, newRefreshToken);
+    res.json({ success: true, data: { user } });
+  } catch (err) {
+    next(err);
+  }
 };
 
-module.exports = { register, login, getMe };
+// POST /api/auth/logout
+const logout = async (req, res) => {
+  clearTokenCookies(res);
+  res.json({ success: true, message: "Sesión cerrada" });
+};
+
+// GET /api/auth/me
+const getMe = async (req, res, next) => {
+  try {
+    const user = await authService.getProfile(req.user.id);
+    res.json({ success: true, data: { user } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { register, login, refreshToken, logout, getMe };

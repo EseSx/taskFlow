@@ -1,77 +1,100 @@
 // ── Configuración de la aplicación Express ────────────────────────
-// Este archivo configura el servidor Express con todos sus middlewares y rutas
-// Se separa de server.js para facilitar el testing
-
 const express = require("express");
 const cors = require("cors");
-const { CLIENT_URL, NODE_ENV } = require("./config/env");
-const { notFound, errorHandler } = require("./middleware/errorHandler");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const cookieParser = require("cookie-parser");
+const { CLIENT_URL } = require("./config/env");
+const errorHandler = require("./middleware/errorHandler");
 
-// Importamos las rutas
 const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
 const subtaskRoutes = require("./routes/subtasks");
 
-// Creamos la instancia de Express
 const app = express();
 
-// ── Middlewares globales ───────────────────────────────────────────
+// ── Helmet ────────────────────────────────────────────────────────
+// Agrega headers HTTP de seguridad: X-Frame-Options, X-Content-Type-Options,
+// Strict-Transport-Security, Content-Security-Policy, etc.
+app.use(helmet());
 
-// CORS: permite que el frontend (en otro origen) haga requests al backend
+// ── CORS ──────────────────────────────────────────────────────────
+// Si CLIENT_URL no está seteado (ej: desarrollo sin .env),
+// usamos localhost:5173 como fallback seguro en lugar de permitir todo.
+const allowedOrigins = (CLIENT_URL || "http://localhost:5173")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-
-      if (origin.includes("vercel.app") || origin.includes("localhost")) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS: Origen ${origin} no permitido`));
-      }
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // Postman, curl, tests
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS bloqueado para: ${origin}`));
     },
-    credentials: true,
+    credentials: true, // Requerido para enviar/recibir cookies cross-origin
   }),
 );
 
-app.options("*", cors());
-
-// Parsear el body de las requests como JSON
-// Sin esto, req.body sería undefined
-app.use(express.json());
-
-// Parsear datos de formularios URL-encoded
-app.use(express.urlencoded({ extended: true }));
-
-// Logging simple en desarrollo (muestra método y ruta de cada request)
-if (NODE_ENV === "development") {
-  app.use((req, res, next) => {
-    console.log(`${req.method} ${req.path}`);
-    next();
-  });
-}
-
-// ── Ruta de salud del servidor ─────────────────────────────────────
-// Útil para verificar que el servidor está corriendo (también para Render)
-app.get("/api/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "TaskFlow API funcionando correctamente",
-    timestamp: new Date().toISOString(),
-  });
+// ── Rate limiting ─────────────────────────────────────────────────
+// General: 100 requests por 15 minutos para toda la API
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Demasiadas solicitudes. Intenta más tarde.",
+  },
 });
 
-// ── Rutas de la API ────────────────────────────────────────────────
-// Montamos cada router con su prefijo correspondiente
-app.use("/api/auth", authRoutes); // /api/auth/register, /api/auth/login, etc.
-app.use("/api/tasks", taskRoutes); // /api/tasks, /api/tasks/:id, etc.
-app.use("/api/tasks/:taskId/subtasks", subtaskRoutes); // /api/tasks/:taskId/subtasks, /api/tasks/:taskId/subtasks/:id, etc.
+// Estricto: 10 intentos por 15 minutos en login y registro
+// Previene ataques de fuerza bruta contra contraseñas
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Demasiados intentos. Espera 15 minutos e intenta de nuevo.",
+  },
+});
 
-// ── Manejo de errores ──────────────────────────────────────────────
+app.use("/api", generalLimiter);
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
 
-// Maneja rutas no encontradas (404)
-app.use(notFound);
+// ── Middlewares globales ──────────────────────────────────────────
+app.use(express.json()); // Necesario para leer JSON en el body de las requests
+app.use(express.urlencoded({ extended: true })); // Necesario para leer datos de formularios (x-www-form-urlencoded)
+app.use(cookieParser()); // Necesario para leer las httpOnly cookies
 
-// Maneja todos los errores que pasen por next(error)
+// ── Health check ──────────────────────────────────────────────────
+app.get("/api/health", (_req, res) =>
+  res.json({
+    success: true,
+    message: "TaskFlow API funcionando",
+    timestamp: new Date(),
+  }),
+);
+
+// ── Rutas ─────────────────────────────────────────────────────────
+app.use("/api/auth", authRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/tasks/:taskId/subtasks", subtaskRoutes);
+
+// ── 404 ───────────────────────────────────────────────────────────
+app.use((req, res) =>
+  res.status(404).json({
+    success: false,
+    message: `Ruta no encontrada: ${req.originalUrl}`,
+  }),
+);
+
+// ── Error handler ─────────────────────────────────────────────────
 app.use(errorHandler);
 
 module.exports = app;
