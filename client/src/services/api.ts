@@ -5,15 +5,23 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-// Flag para evitar loops infinitos de refresh
+let accessToken: string | null = null
+
+export const setAccessToken = (token: string | null) => {
+  accessToken = token
+}
+export const getAccessToken = () => accessToken
+
 let isRefreshing = false
-let refreshFailed = false
 
 const request = async <T>(method: string, endpoint: string, body?: unknown): Promise<T> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include', // Envía y recibe cookies automáticamente
+    headers,
+    credentials: 'include', // Sigue necesario para el refresh token en cookie
     body: body ? JSON.stringify(body) : undefined,
   })
 
@@ -21,37 +29,27 @@ const request = async <T>(method: string, endpoint: string, body?: unknown): Pro
 
   const data = await res.json()
 
-  // Si el access token expiró, intentamos renovarlo una vez
-  if (!res.ok && data?.code === 'TOKEN_EXPIRED' && !isRefreshing && !refreshFailed) {
+  if (!res.ok && data?.code === 'TOKEN_EXPIRED' && !isRefreshing) {
     isRefreshing = true
-
     try {
       const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
       })
-
       if (!refreshRes.ok) throw new Error('Refresh fallido')
-
-      // Refresh exitoso: reintentar la request original
+      const refreshData = await refreshRes.json()
+      setAccessToken(refreshData?.data?.accessToken ?? null)
       isRefreshing = false
       return request<T>(method, endpoint, body)
     } catch {
-      // Refresh falló: la sesión expiró, redirigir al login
       isRefreshing = false
-      refreshFailed = true
+      setAccessToken(null)
       window.location.href = '/login'
       throw new Error('Sesión expirada')
     }
   }
 
-  if (!res.ok) {
-    const err = new Error(data?.message || 'Error en la request')
-    throw err
-  }
-
-  // Resetear el flag de refresh al hacer requests exitosos
-  refreshFailed = false
+  if (!res.ok) throw new Error(data?.message || 'Error en la request')
   return data
 }
 

@@ -68,7 +68,7 @@ const login = async (req, res, next) => {
       req.body,
     );
     setTokenCookies(res, accessToken, refreshToken);
-    res.json({ success: true, data: { user } });
+    res.json({ success: true, data: { user, accessToken } });
   } catch (err) {
     next(err);
   }
@@ -84,7 +84,7 @@ const refreshToken = async (req, res, next) => {
       refreshToken: newRefresh,
     } = await authService.refresh(token);
     setTokenCookies(res, accessToken, newRefresh);
-    res.json({ success: true, data: { user } });
+    res.json({ success: true, data: { user, accessToken } });
   } catch (err) {
     next(err);
   }

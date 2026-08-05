@@ -1,7 +1,7 @@
 // ── Store de autenticación ────────────────────────────────────────
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { api } from '@/services/api'
+import { api, setAccessToken } from '@/services/api'
 
 interface User {
   id: number
@@ -18,19 +18,21 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!user.value)
 
   // ── checkAuth ─────────────────────────────────────────────────
-  // Llamado al iniciar la app. Verifica si hay una sesión activa
-  // preguntándole al backend (la cookie se envía automáticamente).
-  // Ya no leemos localStorage — el token viaja en httpOnly cookies.
   const checkAuth = async () => {
     try {
-      const res = await api.get<any>('/auth/me')
-      user.value = res?.data?.user ?? null
+      const refreshRes = await fetch(`${import.meta.env.VITE_API_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!refreshRes.ok) throw new Error()
+      const data = await refreshRes.json()
+      setAccessToken(data?.data?.accessToken ?? null)
+      user.value = data?.data?.user ?? null
     } catch {
-      // No hay sesión activa o el refresh también falló — es normal
       user.value = null
+      setAccessToken(null)
     }
   }
-
   // ── register ──────────────────────────────────────────────────
   const register = async (data: { name: string; email: string; password: string }) => {
     loading.value = true
@@ -54,6 +56,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const res = await api.post<any>('/auth/login', data)
       user.value = res?.data?.user ?? null
+      setAccessToken(res?.data?.accessToken ?? null) // ← guardar el token en memoria
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Credenciales inválidas'
       throw e
@@ -63,15 +66,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // ── logout ────────────────────────────────────────────────────
-  // Llama al backend para que limpie las cookies httpOnly
-  // (desde el frontend no podemos borrarlas directamente)
   const logout = async () => {
     try {
       await api.post('/auth/logout')
     } catch {
-      // Si falla la request igual limpiamos el estado local
     } finally {
       user.value = null
+      setAccessToken(null)
     }
   }
 
