@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    // ── Rutas públicas ──────────────────────────────────────────
+    // ── Rutas públicas ────────────────────────────────────────────
     {
       path: '/',
       component: () => import('@/layouts/PublicLayout.vue'),
@@ -15,7 +15,21 @@ const router = createRouter({
       ],
     },
 
-    // ── Rutas protegidas ────────────────────────────────────────
+    // ── Verificación de email (fuera del layout público/privado) ──
+    // /verify-email → pantalla "revisá tu email" (post-registro)
+    {
+      path: '/verify-email',
+      name: 'VerifyEmail',
+      component: () => import('@/views/Verifyemail.vue'),
+    },
+    // /verify-email/confirm?token=xxx → el link del email aterriza acá
+    {
+      path: '/verify-email/confirm',
+      name: 'VerifySuccess',
+      component: () => import('@/views/Verifysuccess.vue'),
+    },
+
+    // ── Rutas protegidas ──────────────────────────────────────────
     {
       path: '/',
       component: () => import('@/layouts/DashboardLayout.vue'),
@@ -31,17 +45,13 @@ const router = createRouter({
       ],
     },
 
-    // ── 404 ─────────────────────────────────────────────────────
     { path: '/:pathMatch(.*)*', redirect: '/login' },
   ],
 })
 
 // ── Navigation guard ──────────────────────────────────────────────
-// Ya no leemos localStorage. Usamos el store (que fue hidratado
-// por checkAuth en App.vue al iniciar la app).
 router.beforeEach((to) => {
   const authStore = useAuthStore()
-
   const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
   const isAuth = authStore.isAuthenticated
 

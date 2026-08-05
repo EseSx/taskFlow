@@ -21,25 +21,28 @@ const fieldErrors = ref<Record<string, string>>({})
 
 // ── Handler principal ─────────────────────────────────────────────
 const handleLogin = async () => {
-  // 1. Limpiamos errores previos
+  // Limpiamos errores previos
   fieldErrors.value = {}
   authStore.clearError()
 
-  // 2. Validamos localmente antes de hacer el request
+  // Validamos localmente antes de hacer el request
   const errors = validateLoginForm(email.value, password.value)
   if (Object.keys(errors).length > 0) {
     fieldErrors.value = errors
     return
   }
 
-  // 3. Intentamos el login — el store maneja loading y error
+  // Intentamos el login — el store maneja loading y error
   try {
     await authStore.login(email.value, password.value)
     // Si no lanza error, el login fue exitoso → redirigimos
     router.push('/dashboard')
-  } catch {
-    // El error ya está en authStore.error, lo mostramos en el formulario
-    // No necesitamos hacer nada acá
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message.includes('verificar tu email')) {
+      errors.email = 'Debés verificar tu email antes de iniciar sesión'
+    } else {
+      errors.general = e instanceof Error ? e.message : 'Error al iniciar sesión'
+    }
   }
 }
 </script>

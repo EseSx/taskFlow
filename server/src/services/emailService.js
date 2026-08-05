@@ -6,7 +6,7 @@ const resend = new Resend(RESEND_API_KEY);
 // ── Enviar email de verificación ──────────────────────────────────
 const sendVerificationEmail = async ({ name, email, token }) => {
   // El link apunta al frontend, que llama al backend con el token
-  const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
+  const verifyUrl = `${APP_URL}/verify-email/confirm?token=${token}`;
 
   const { error } = await resend.emails.send({
     from: "TaskFlow <onboarding@resend.dev>", // Dominio de prueba de Resend

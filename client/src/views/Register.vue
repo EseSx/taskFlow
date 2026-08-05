@@ -44,7 +44,7 @@ const handleRegister = async () => {
   try {
     await authStore.register(name.value, email.value, password.value)
     // Registro exitoso → vamos al dashboard directamente (ya está logueado)
-    router.push('/dashboard')
+    router.push({ path: '/verify-email', query: { email: formData.email } })
   } catch {
     // El error del backend ya está en authStore.error
     // No necesitamos hacer nada acá
