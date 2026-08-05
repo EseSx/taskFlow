@@ -12,6 +12,7 @@ const taskRoutes = require("./routes/tasks");
 const subtaskRoutes = require("./routes/subtasks");
 
 const app = express();
+app.set("trust proxy", 1);
 
 // ── Helmet ────────────────────────────────────────────────────────
 // Agrega headers HTTP de seguridad: X-Frame-Options, X-Content-Type-Options,

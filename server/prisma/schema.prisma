@@ -35,7 +35,7 @@ model Task {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   userId      Int
-  Subtask     Subtask[]
+  subtasks    Subtask[]
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tasks")
@@ -49,7 +49,7 @@ model Subtask {
   taskId    Int
   createdAt DateTime @default(now())
   updatedAt DateTime
-  tasks     Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
 }
 
 enum Priority {
