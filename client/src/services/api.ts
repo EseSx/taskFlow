@@ -17,6 +17,8 @@ const request = async <T>(method: string, endpoint: string, body?: unknown): Pro
     body: body ? JSON.stringify(body) : undefined,
   })
 
+  if (res.status === 204) return null as T
+
   const data = await res.json()
 
   // Si el access token expiró, intentamos renovarlo una vez
