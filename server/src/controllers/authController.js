@@ -6,7 +6,7 @@ const { NODE_ENV } = require("../config/env");
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: NODE_ENV === "production",
-  sameSite: "lax",
+  sameSite: NODE_ENV === "production" ? "none" : "lax",
   path: "/",
 };
 const ACCESS_COOKIE_OPTIONS = { ...COOKIE_OPTIONS, maxAge: 15 * 60 * 1000 };
