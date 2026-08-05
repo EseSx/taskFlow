@@ -1,81 +1,61 @@
-// ── Servicio API ──────────────────────────────────────────────────
-// Cliente HTTP centralizado para comunicarse con el backend
-// Maneja automáticamente: el token JWT, errores globales y base URL
+// ── Cliente HTTP centralizado ─────────────────────────────────────
+// - Envía cookies automáticamente con credentials: 'include'
+// - Si el access token expiró (TOKEN_EXPIRED), intenta renovarlo
+//   con /auth/refresh y reintenta la request original una vez
 
-// URL base del backend (se configura en .env)
-const BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-// ── Tipo de opciones para el fetch ───────────────────────────────
-interface RequestOptions extends RequestInit {
-  params?: Record<string, string> // Query params opcionales
-}
+// Flag para evitar loops infinitos de refresh
+let isRefreshing = false
+let refreshFailed = false
 
-// ── Función base de fetch ─────────────────────────────────────────
-// Todas las funciones del servicio usan esta como base
-async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { params, ...fetchOptions } = options
-
-  // Construimos la URL con query params si los hay
-  const url = new URL(`${BASE_URL}${endpoint}`)
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      url.searchParams.append(key, value)
-    })
-  }
-
-  // Obtenemos el token del localStorage para incluirlo en el header
-  const token = localStorage.getItem('token')
-
-  // Construimos los headers con JSON por defecto y el token si existe
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...(fetchOptions.headers as Record<string, string>),
-  }
-
-  // Ejecutamos el fetch con todas las opciones configuradas
-  const response = await fetch(url.toString(), {
-    ...fetchOptions,
-    headers,
+const request = async <T>(method: string, endpoint: string, body?: unknown): Promise<T> => {
+  const res = await fetch(`${BASE_URL}${endpoint}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', // Envía y recibe cookies automáticamente
+    body: body ? JSON.stringify(body) : undefined,
   })
 
-  // Si la respuesta es 204 (No Content, ej: DELETE), devolvemos null
-  if (response.status === 204) return null as T
+  const data = await res.json()
 
-  // Parseamos el JSON de la respuesta
-  const data = await response.json()
+  // Si el access token expiró, intentamos renovarlo una vez
+  if (!res.ok && data?.code === 'TOKEN_EXPIRED' && !isRefreshing && !refreshFailed) {
+    isRefreshing = true
 
-  // Si la respuesta no es exitosa, lanzamos un error con el mensaje del backend
-  if (!response.ok) {
-    const message = data.message || data.errors?.join(', ') || 'Error del servidor'
-    throw new Error(message)
+    try {
+      const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+
+      if (!refreshRes.ok) throw new Error('Refresh fallido')
+
+      // Refresh exitoso: reintentar la request original
+      isRefreshing = false
+      return request<T>(method, endpoint, body)
+    } catch {
+      // Refresh falló: la sesión expiró, redirigir al login
+      isRefreshing = false
+      refreshFailed = true
+      window.location.href = '/login'
+      throw new Error('Sesión expirada')
+    }
   }
 
+  if (!res.ok) {
+    const err = new Error(data?.message || 'Error en la request')
+    throw err
+  }
+
+  // Resetear el flag de refresh al hacer requests exitosos
+  refreshFailed = false
   return data
 }
 
-// ── Métodos HTTP ──────────────────────────────────────────────────
-
 export const api = {
-  // GET: obtener datos (con query params opcionales)
-  get: <T>(endpoint: string, params?: Record<string, string>) =>
-    request<T>(endpoint, { method: 'GET', params }),
-
-  // POST: crear recursos
-  post: <T>(endpoint: string, body: unknown) =>
-    request<T>(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-
-  // PUT: actualizar recursos
-  put: <T>(endpoint: string, body: unknown) =>
-    request<T>(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    }),
-
-  // DELETE: eliminar recursos
-  delete: <T>(endpoint: string) =>
-    request<T>(endpoint, { method: 'DELETE' }),
+  get: <T>(endpoint: string) => request<T>('GET', endpoint),
+  post: <T>(endpoint: string, body?: unknown) => request<T>('POST', endpoint, body),
+  put: <T>(endpoint: string, body?: unknown) => request<T>('PUT', endpoint, body),
+  delete: <T>(endpoint: string) => request<T>('DELETE', endpoint),
 }

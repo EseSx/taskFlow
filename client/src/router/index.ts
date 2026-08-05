@@ -1,72 +1,53 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
-import PublicLayout from '@/layouts/PublicLayout.vue'
-import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-
   routes: [
+    // ── Rutas públicas ──────────────────────────────────────────
     {
       path: '/',
-      redirect: '/login'
+      component: () => import('@/layouts/PublicLayout.vue'),
+      children: [
+        { path: '', redirect: '/login' },
+        { path: 'login', name: 'Login', component: () => import('@/views/Login.vue') },
+        { path: 'register', name: 'Register', component: () => import('@/views/Register.vue') },
+      ],
     },
 
+    // ── Rutas protegidas ────────────────────────────────────────
     {
       path: '/',
-      component: PublicLayout,
-
+      component: () => import('@/layouts/DashboardLayout.vue'),
+      meta: { requiresAuth: true },
       children: [
-        {
-          path: 'login',
-          component: () => import('@/views/Login.vue')
-        },
-
-        {
-          path: 'register',
-          component: () => import('@/views/Register.vue')
-        }
-      ]
-    },
-
-    {
-      path: '/',
-      component: DashboardLayout,
-
-      children: [
-        {
-          path: 'dashboard',
-          component: () => import('@/views/Dashboard.vue'),
-          meta: {
-            requiresAuth: true
-          }
-        },
-
-        {
-          path: 'tasks',
-          component: () => import('@/views/Tasks.vue'),
-          meta: {
-            requiresAuth: true
-          }
-        },
-
+        { path: 'dashboard', name: 'Dashboard', component: () => import('@/views/Dashboard.vue') },
+        { path: 'tasks', name: 'Tasks', component: () => import('@/views/Tasks.vue') },
         {
           path: 'tasks/:id',
+          name: 'TaskDetail',
           component: () => import('@/views/TaskDetail.vue'),
-          meta: {
-            requiresAuth: true
-          }
-        }
-      ]
-    }
-  ]
+        },
+      ],
+    },
+
+    // ── 404 ─────────────────────────────────────────────────────
+    { path: '/:pathMatch(.*)*', redirect: '/login' },
+  ],
 })
 
+// ── Navigation guard ──────────────────────────────────────────────
+// Ya no leemos localStorage. Usamos el store (que fue hidratado
+// por checkAuth en App.vue al iniciar la app).
 router.beforeEach((to) => {
-  const isAuthenticated = localStorage.getItem('token')
+  const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    return '/login'
+  const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
+  const isAuth = authStore.isAuthenticated
+
+  if (requiresAuth && !isAuth) return { name: 'Login' }
+  if (!requiresAuth && isAuth && (to.name === 'Login' || to.name === 'Register')) {
+    return { name: 'Dashboard' }
   }
 })
 
