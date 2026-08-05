@@ -5,7 +5,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
 const { CLIENT_URL } = require("./config/env");
-const errorHandler = require("./middleware/errorHandler");
+const { errorHandler } = require("./middleware/errorHandler");
 
 const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
