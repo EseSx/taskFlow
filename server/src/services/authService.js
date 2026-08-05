@@ -1,7 +1,9 @@
 // ── Servicio de autenticación ─────────────────────────────────────
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto"); // Módulo nativo de Node — no requiere instalación
 const prisma = require("../database/client");
+const { sendVerificationEmail } = require("./emailService");
 const {
   JWT_SECRET,
   JWT_REFRESH_SECRET,
@@ -10,35 +12,32 @@ const {
 } = require("../config/env");
 
 // ── Validación de contraseña fuerte ──────────────────────────────
-// Mínimo 8 caracteres, al menos una mayúscula, una minúscula y un número
 const validatePassword = (password) => {
-  if (!password || password.length < 8) {
+  if (!password || password.length < 8)
     return "La contraseña debe tener al menos 8 caracteres";
-  }
-  if (!/[A-Z]/.test(password)) {
+  if (!/[A-Z]/.test(password))
     return "La contraseña debe contener al menos una mayúscula";
-  }
-  if (!/[a-z]/.test(password)) {
+  if (!/[a-z]/.test(password))
     return "La contraseña debe contener al menos una minúscula";
-  }
-  if (!/[0-9]/.test(password)) {
+  if (!/[0-9]/.test(password))
     return "La contraseña debe contener al menos un número";
-  }
-  return null; // null = válida
+  return null;
 };
 
 // ── Generación de tokens ──────────────────────────────────────────
 const generateAccessToken = (userId) =>
   jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-
 const generateRefreshToken = (userId) =>
   jwt.sign({ id: userId }, JWT_REFRESH_SECRET, {
     expiresIn: JWT_REFRESH_EXPIRES_IN,
   });
 
+// ── Generación de token de verificación ──────────────────────────
+// crypto.randomBytes genera un token seguro e impredecible
+const generateVerificationToken = () => crypto.randomBytes(32).toString("hex");
+
 // ── Register ──────────────────────────────────────────────────────
 const register = async ({ name, email, password }) => {
-  // Validar contraseña antes de cualquier operación
   const passwordError = validatePassword(password);
   if (passwordError) {
     const err = new Error(passwordError);
@@ -46,7 +45,6 @@ const register = async ({ name, email, password }) => {
     throw err;
   }
 
-  // Verificar email único
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     const err = new Error("El email ya está registrado");
@@ -54,26 +52,102 @@ const register = async ({ name, email, password }) => {
     throw err;
   }
 
-  // Hashear contraseña con bcrypt (salt rounds = 12)
   const hashedPassword = await bcrypt.hash(password, 12);
+  const verificationToken = generateVerificationToken();
+  const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
 
   const user = await prisma.user.create({
-    data: { name, email, password: hashedPassword },
-    select: { id: true, name: true, email: true, createdAt: true },
+    data: {
+      name,
+      email,
+      password: hashedPassword,
+      verified: false, // Empieza sin verificar
+      verificationToken,
+      tokenExpiresAt,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      verified: true,
+      createdAt: true,
+    },
   });
 
-  const accessToken = generateAccessToken(user.id);
-  const refreshToken = generateRefreshToken(user.id);
+  // Enviar el email con el link de verificación
+  await sendVerificationEmail({
+    name: user.name,
+    email: user.email,
+    token: verificationToken,
+  });
 
-  return { user, accessToken, refreshToken };
+  // NO generamos tokens JWT todavía — el usuario debe verificar primero
+  return { user };
+};
+
+// ── Verify email ──────────────────────────────────────────────────
+const verifyEmail = async (token) => {
+  if (!token) {
+    const err = new Error("Token de verificación requerido");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Buscar usuario con ese token
+  const user = await prisma.user.findFirst({
+    where: { verificationToken: token },
+  });
+
+  if (!user) {
+    const err = new Error("Token de verificación inválido");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Verificar que el token no haya expirado
+  if (user.tokenExpiresAt && user.tokenExpiresAt < new Date()) {
+    const err = new Error(
+      "El token de verificación expiró. Regístrate nuevamente.",
+    );
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (user.verified) {
+    const err = new Error("La cuenta ya fue verificada");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Marcar como verificado y limpiar el token
+  const verifiedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      verified: true,
+      verificationToken: null,
+      tokenExpiresAt: null,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      verified: true,
+      createdAt: true,
+    },
+  });
+
+  // Ahora sí generamos los tokens JWT para iniciar sesión automáticamente
+  const accessToken = generateAccessToken(verifiedUser.id);
+  const refreshToken = generateRefreshToken(verifiedUser.id);
+
+  return { user: verifiedUser, accessToken, refreshToken };
 };
 
 // ── Login ─────────────────────────────────────────────────────────
 const login = async ({ email, password }) => {
   const user = await prisma.user.findUnique({ where: { email } });
 
-  // Siempre comparamos con bcrypt aunque el usuario no exista
-  // para evitar timing attacks que permitan enumerar emails
+  // Siempre comparamos con bcrypt aunque el usuario no exista (anti timing attack)
   const dummyHash = "$2a$12$dummy.hash.to.prevent.timing.attacks.padding";
   const isValid = user
     ? await bcrypt.compare(password, user.password)
@@ -82,6 +156,14 @@ const login = async ({ email, password }) => {
   if (!user || !isValid) {
     const err = new Error("Credenciales inválidas");
     err.statusCode = 401;
+    throw err;
+  }
+
+  // Bloquear login si el email no fue verificado
+  if (!user.verified) {
+    const err = new Error("Debes verificar tu email antes de iniciar sesión");
+    err.statusCode = 403;
+    err.code = "EMAIL_NOT_VERIFIED";
     throw err;
   }
 
@@ -98,7 +180,6 @@ const login = async ({ email, password }) => {
 };
 
 // ── Refresh ───────────────────────────────────────────────────────
-// Verifica el refresh token y emite un nuevo access token
 const refresh = async (refreshToken) => {
   if (!refreshToken) {
     const err = new Error("Refresh token requerido");
@@ -126,7 +207,6 @@ const refresh = async (refreshToken) => {
     throw err;
   }
 
-  // Rotación: emitimos un nuevo par de tokens
   const newAccessToken = generateAccessToken(user.id);
   const newRefreshToken = generateRefreshToken(user.id);
 
@@ -147,4 +227,4 @@ const getProfile = async (userId) => {
   return user;
 };
 
-module.exports = { register, login, refresh, getProfile };
+module.exports = { register, verifyEmail, login, refresh, getProfile };

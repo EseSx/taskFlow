@@ -3,24 +3,16 @@ const authService = require("../services/authService");
 const { NODE_ENV } = require("../config/env");
 
 // ── Configuración de cookies ──────────────────────────────────────
-// httpOnly: JavaScript nunca puede leer la cookie (protección XSS)
-// secure: solo se envía por HTTPS (en producción)
-// sameSite: 'lax' previene CSRF en la mayoría de casos
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: NODE_ENV === "production",
   sameSite: "lax",
   path: "/",
 };
-
-const ACCESS_COOKIE_OPTIONS = {
-  ...COOKIE_OPTIONS,
-  maxAge: 15 * 60 * 1000, // 15 minutos en ms
-};
-
+const ACCESS_COOKIE_OPTIONS = { ...COOKIE_OPTIONS, maxAge: 15 * 60 * 1000 };
 const REFRESH_COOKIE_OPTIONS = {
   ...COOKIE_OPTIONS,
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en ms
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 // ── Helper para setear ambas cookies ─────────────────────────────
@@ -36,13 +28,34 @@ const clearTokenCookies = (res) => {
 };
 
 // POST /api/auth/register
+// Crea la cuenta y envía el email — NO setea cookies todavía
 const register = async (req, res, next) => {
   try {
-    const { user, accessToken, refreshToken } = await authService.register(
-      req.body,
-    );
+    const { user } = await authService.register(req.body);
+    res.status(201).json({
+      success: true,
+      message: "Cuenta creada. Revisa tu email para verificar tu cuenta.",
+      data: { user },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/auth/verify?token=xxx
+// El frontend llama a este endpoint cuando el usuario hace click en el link
+const verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.query;
+    const { user, accessToken, refreshToken } =
+      await authService.verifyEmail(token);
+    // Verificación exitosa: seteamos las cookies y la sesión queda iniciada
     setTokenCookies(res, accessToken, refreshToken);
-    res.status(201).json({ success: true, data: { user } });
+    res.json({
+      success: true,
+      message: "¡Email verificado! Tu cuenta está activa.",
+      data: { user },
+    });
   } catch (err) {
     next(err);
   }
@@ -62,16 +75,15 @@ const login = async (req, res, next) => {
 };
 
 // POST /api/auth/refresh
-// El cliente llama a este endpoint cuando el access token expira
 const refreshToken = async (req, res, next) => {
   try {
     const token = req.cookies.refresh_token;
     const {
       user,
       accessToken,
-      refreshToken: newRefreshToken,
+      refreshToken: newRefresh,
     } = await authService.refresh(token);
-    setTokenCookies(res, accessToken, newRefreshToken);
+    setTokenCookies(res, accessToken, newRefresh);
     res.json({ success: true, data: { user } });
   } catch (err) {
     next(err);
@@ -94,4 +106,4 @@ const getMe = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, refreshToken, logout, getMe };
+module.exports = { register, verifyEmail, login, refreshToken, logout, getMe };
