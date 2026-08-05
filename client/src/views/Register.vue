@@ -23,11 +23,10 @@ const fieldErrors = ref<Record<string, string>>({})
 
 // ── Handler principal ─────────────────────────────────────────────
 const handleRegister = async () => {
-  // 1. Limpiamos errores previos
+  // Limpiamos errores previos
   fieldErrors.value = {}
-  authStore.clearError()
 
-  // 2. Validamos localmente (sin hacer el request todavía)
+  // Validamos localmente (sin hacer el request todavía)
   const errors = validateRegisterForm(
     name.value,
     email.value,
@@ -40,11 +39,10 @@ const handleRegister = async () => {
     return
   }
 
-  // 3. Llamamos al store — maneja loading, el request y el error
+  // Llamamos al store — maneja loading, el request y el error
   try {
-    await authStore.register(name.value, email.value, password.value)
-    // Registro exitoso → vamos al dashboard directamente (ya está logueado)
-    router.push({ path: '/verify-email', query: { email: formData.email } })
+    await authStore.register({ name: name.value, email: email.value, password: password.value })
+    router.push({ path: '/verify-email', query: { email: email.value } })
   } catch {
     // El error del backend ya está en authStore.error
     // No necesitamos hacer nada acá

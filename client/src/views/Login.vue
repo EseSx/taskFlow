@@ -23,7 +23,6 @@ const fieldErrors = ref<Record<string, string>>({})
 const handleLogin = async () => {
   // Limpiamos errores previos
   fieldErrors.value = {}
-  authStore.clearError()
 
   // Validamos localmente antes de hacer el request
   const errors = validateLoginForm(email.value, password.value)
@@ -34,8 +33,7 @@ const handleLogin = async () => {
 
   // Intentamos el login — el store maneja loading y error
   try {
-    await authStore.login(email.value, password.value)
-    // Si no lanza error, el login fue exitoso → redirigimos
+    await authStore.login({ email: email.value, password: password.value })
     router.push('/dashboard')
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes('verificar tu email')) {
