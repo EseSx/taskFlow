@@ -1,31 +1,26 @@
-// Generador de cliente Prisma para TypeScript
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
-// Datasource para la base de datos PostgreSQL
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// Enumeración para la prioridad de las tareas
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-// Definición de modelos para la base de datos
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+
+  verified          Boolean   @default(false)
+  verificationToken String?
+  tokenExpiresAt    DateTime?
+
+  tasks     Task[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  tasks     Task[]
 
   @@map("users")
 }
@@ -40,22 +35,25 @@ model Task {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   userId      Int
+  Subtask     Subtask[]
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Añadido de las subtareas como una relación uno a muchos
-  subtasks Subtask[]
 
   @@map("tasks")
 }
 
-// Nuevo modelo para las subtareas
 model Subtask {
   id        Int      @id @default(autoincrement())
   title     String
   completed Boolean  @default(false)
   order     Int      @default(0)
   taskId    Int
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime
+  tasks     Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
 }
