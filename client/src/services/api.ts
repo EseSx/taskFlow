@@ -5,18 +5,18 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-let accessToken: string | null = null
-
 export const setAccessToken = (token: string | null) => {
-  accessToken = token
+  if (token) sessionStorage.setItem('at', token)
+  else sessionStorage.removeItem('at')
 }
-export const getAccessToken = () => accessToken
+export const getAccessToken = () => sessionStorage.getItem('at')
 
 let isRefreshing = false
 
 const request = async <T>(method: string, endpoint: string, body?: unknown): Promise<T> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+  const token = getAccessToken()
+  if (token) headers['Authorization'] = `Bearer ${token}`
 
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     method,
