@@ -10,7 +10,10 @@ const sendVerificationEmail = async ({ name, email, token }) => {
 
   const { error } = await resend.emails.send({
     from: "TaskFlow <onboarding@resend.dev>", // Dominio de prueba de Resend
-    to: email,
+    to:
+      process.env.NODE_ENV === "production"
+        ? process.env.RESEND_TEST_EMAIL || email // variable para el email de prueba
+        : email,
     subject: "Verifica tu cuenta de TaskFlow",
     html: `
       <!DOCTYPE html>
