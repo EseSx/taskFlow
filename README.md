@@ -35,7 +35,7 @@ TaskFlow es una aplicación web completa que permite a los usuarios gestionar su
 
 **Funcionalidades principales:**
 
-- Registro con verificación de email real (Resend)
+- Registro con verificación de email vía Resend (ver limitación de demo más abajo)
 - Autenticación con access token en memoria + refresh token en httpOnly cookie
 - Crear, editar, eliminar y marcar tareas como completadas
 - Subtareas dentro de cada tarea con barra de progreso
@@ -271,6 +271,8 @@ cd client && npm run dev
 3. Iniciá sesión en `/login`
 4. Creá tareas y subtareas desde el dashboard
 
+> **Limitación del entorno de demo:** Resend requiere un dominio verificado para enviar emails a destinatarios arbitrarios. En el entorno de demo actual se usa el dominio de prueba `onboarding@resend.dev`, que solo permite enviar al email del desarrollador (`santiagoeseiza10@gmail.com`). Esto significa que al registrarse con cualquier otra dirección, el email de verificación llega igualmente a esa casilla. El flujo técnico de verificación es completamente funcional — el token se genera, se persiste en la DB y se valida correctamente; la única restricción es la del proveedor de email en modo sandbox. Para producción real se resuelve verificando un dominio propio en [resend.com/domains](https://resend.com/domains) y actualizando el campo `from` en `emailService.js`.
+
 ---
 
 ## Referencia de la API
@@ -415,7 +417,7 @@ Al expirar el access token (15min):
 
 **JWT en dos capas** — access token de vida corta (15min) en sessionStorage + refresh token de 7 días en httpOnly cookie. El access token no es accesible desde otras pestañas ni persiste al cerrar el browser. El refresh token nunca es accesible desde JavaScript.
 
-**Verificación de email** — los usuarios deben verificar su email antes de poder iniciar sesión. El token de verificación expira en 24 horas y se genera con `crypto.randomBytes` (criptográficamente seguro).
+**Verificación de email** — los usuarios deben verificar su email antes de poder iniciar sesión. El token de verificación expira en 24 horas y se genera con `crypto.randomBytes` (criptográficamente seguro). El envío se realiza con Resend. En el entorno de demo se usa el dominio sandbox de Resend (`onboarding@resend.dev`), que restringe el destinatario al email del desarrollador; todos los emails de verificación llegan a esa casilla independientemente de la dirección con la que se registró el usuario. Esta es una limitación del proveedor en modo gratuito sin dominio verificado, no del sistema de verificación en sí.
 
 **CORS estricto** — solo los orígenes definidos en `CLIENT_URL` pueden hacer requests. En desarrollo hay fallback a `localhost:5173` pero nunca se permite `*`.
 
