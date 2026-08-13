@@ -153,7 +153,7 @@ const handleDelete = async (subtaskId: number) => {
           <span
             v-else
             :class="[
-              'text-sm leading-5 block truncate cursor-default',
+              'text-sm leading-snug whitespace-normal wrap-break-word cursor-default',
               subtask.completed ? 'line-through text-white/30' : 'text-white/80',
             ]"
             @dblclick="startEdit(subtask)"

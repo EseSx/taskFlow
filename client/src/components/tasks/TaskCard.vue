@@ -61,7 +61,7 @@ const formatDate = (d: string | null) => {
       <!-- Título -->
       <p
         :class="[
-          'text-sm font-medium text-white leading-5',
+          'text-sm font-medium text-white leading-snug whitespace-normal wrap-break-word',
           task.completed && 'line-through opacity-50',
         ]"
       >
@@ -69,7 +69,10 @@ const formatDate = (d: string | null) => {
       </p>
 
       <!-- Descripción -->
-      <p v-if="task.description" class="text-xs text-white/40 mt-0.5 line-clamp-1">
+      <p
+        v-if="task.description"
+        class="text-xs text-white/40 mt-0.5 line-clamp-1 whitespace-normal wrap-break-word"
+      >
         {{ task.description }}
       </p>
 
